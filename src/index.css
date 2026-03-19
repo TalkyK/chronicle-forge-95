@@ -1,96 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 40 18% 95%;
+    --foreground: 260 22% 12%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 36 24% 90%;
+    --card-foreground: 260 22% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 40 18% 95%;
+    --popover-foreground: 260 22% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 264 33% 46%;
+    --primary-foreground: 40 18% 95%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 36 24% 90%;
+    --secondary-foreground: 260 22% 12%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 36 14% 88%;
+    --muted-foreground: 270 12% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 37 72% 41%;
+    --accent-foreground: 40 18% 95%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 71% 46%;
+    --destructive-foreground: 40 18% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --success: 153 44% 42%;
+    --success-foreground: 40 18% 95%;
+
+    --border: 24 12% 80%;
+    --input: 0 0% 100%;
+    --ring: 264 33% 46%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 40 18% 95%;
+    --sidebar-foreground: 260 22% 12%;
+    --sidebar-primary: 264 33% 46%;
+    --sidebar-primary-foreground: 40 18% 95%;
+    --sidebar-accent: 36 24% 90%;
+    --sidebar-accent-foreground: 260 22% 12%;
+    --sidebar-border: 24 12% 80%;
+    --sidebar-ring: 264 33% 46%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --gradient-hero: linear-gradient(135deg, hsl(260 22% 12%) 0%, hsl(270 30% 18%) 50%, hsl(272 40% 25%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(264 33% 46%), hsl(272 40% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(37 72% 41%), hsl(37 72% 55%));
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 250 30% 4%;
+    --foreground: 36 24% 88%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 250 25% 8%;
+    --card-foreground: 36 24% 88%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 250 25% 8%;
+    --popover-foreground: 36 24% 88%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 264 33% 51%;
+    --primary-foreground: 36 24% 95%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 250 25% 12%;
+    --secondary-foreground: 36 24% 88%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 250 15% 14%;
+    --muted-foreground: 240 10% 63%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 37 55% 50%;
+    --accent-foreground: 250 30% 4%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 71% 55%;
+    --destructive-foreground: 36 24% 95%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --success: 153 44% 50%;
+    --success-foreground: 250 30% 4%;
+
+    --border: 250 20% 18%;
+    --input: 250 20% 14%;
+    --ring: 264 33% 51%;
+
+    --sidebar-background: 250 30% 6%;
+    --sidebar-foreground: 36 24% 88%;
+    --sidebar-primary: 264 33% 51%;
+    --sidebar-primary-foreground: 36 24% 95%;
+    --sidebar-accent: 250 25% 12%;
+    --sidebar-accent-foreground: 36 24% 88%;
+    --sidebar-border: 250 20% 18%;
+    --sidebar-ring: 264 33% 51%;
+
+    --gradient-hero: linear-gradient(135deg, #0D0D14 0%, #1E1030 50%, #2D1B4E 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(264 33% 51%), hsl(272 40% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(37 55% 50%), hsl(37 72% 60%));
   }
 }
 
@@ -100,6 +106,55 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Cinzel Decorative', serif;
+  }
+
+  .font-heading {
+    font-family: 'Cinzel', serif;
+  }
+
+  .font-body {
+    font-family: 'Crimson Pro', serif;
+  }
+
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
+  .text-gradient-accent {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-accent);
+  }
+
+  .bg-hero {
+    background: var(--gradient-hero);
+  }
+
+  .grain-overlay {
+    position: relative;
+  }
+  .grain-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
   }
 }

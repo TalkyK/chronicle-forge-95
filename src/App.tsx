@@ -20,7 +20,7 @@ const AppLayout = () => {
 
   return (
     <>
-      {!isRpgDashboard && <Header />}
+      {!isDashboard && <Header />}
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/sheets/new" element={<NewSheet />} />

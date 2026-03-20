@@ -14,12 +14,13 @@ const queryClient = new QueryClient();
 const AppLayout = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const isRpgDashboard =
-    location.pathname === "/sheets/new" && searchParams.get("type") === "RPG";
+  const sheetType = searchParams.get("type");
+  const isDashboard =
+    location.pathname === "/sheets/new" && (sheetType === "RPG" || sheetType === "STORY");
 
   return (
     <>
-      {!isRpgDashboard && <Header />}
+      {!isDashboard && <Header />}
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/sheets/new" element={<NewSheet />} />

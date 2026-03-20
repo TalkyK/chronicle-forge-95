@@ -427,7 +427,7 @@ const StorySheetDashboard = () => {
               {/* Auto-save indicator + Bottom actions */}
               <div className="flex items-center justify-between pb-8">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <History className="w-4 h-4" />
+                  <Clock className="w-4 h-4" />
                   <span className="text-xs font-body">Alterações salvas automaticamente no rascunho</span>
                 </div>
                 <div className="flex gap-3">

@@ -13,6 +13,15 @@ import {
   X,
   Save,
   FileText,
+  Shield,
+  Skull,
+  GraduationCap,
+  Brain,
+  Drama,
+  EyeOff,
+  Sparkles,
+  BookOpenCheck,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

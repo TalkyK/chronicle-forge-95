@@ -1,9 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { BookOpen, Plus, Moon, Sun } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useLocale } from "@/i18n/locale";
 
 const Header = () => {
   const location = useLocation();
+  const { t } = useLocale();
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== "undefined") {
       return document.documentElement.classList.contains("dark") ||
@@ -36,7 +38,7 @@ const Header = () => {
         <Link to="/" className="flex items-center gap-2 group">
           <BookOpen className="w-5 h-5 text-primary transition-transform group-hover:scale-110" />
           <span className="font-display text-sm tracking-wider text-foreground">
-            Fichas
+            {t("header.brand")}
           </span>
         </Link>
 
@@ -49,19 +51,19 @@ const Header = () => {
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
-            Grimório
+            {t("nav.grimoires")}
           </Link>
           <Link
             to="/sheets/new"
             className="px-3 py-1.5 rounded-md text-sm font-heading tracking-wide text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" />
-            Nova Ficha
+            {t("catalog.newSheet")}
           </Link>
           <button
             onClick={() => setIsDark(!isDark)}
             className="ml-2 p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Alternar tema"
+            aria-label={t("header.toggleTheme")}
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>

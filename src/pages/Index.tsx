@@ -2,9 +2,11 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import InteractiveCoin from "@/components/InteractiveCoin";
 import { Sparkles, Scroll, Users } from "lucide-react";
+import { useLocale } from "@/i18n/locale";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { t } = useLocale();
 
   const handleSelect = (mode: "RPG" | "STORY") => {
     navigate(`/sheets/new?type=${mode}`);
@@ -21,7 +23,7 @@ const Index = () => {
             transition={{ duration: 0.7 }}
             className="font-display text-3xl sm:text-4xl md:text-5xl text-primary-foreground leading-tight"
           >
-            Gerador de Fichas
+            {t("index.title")}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 15 }}
@@ -29,7 +31,7 @@ const Index = () => {
             transition={{ duration: 0.7, delay: 0.15 }}
             className="text-primary-foreground/70 font-body text-lg sm:text-xl max-w-md"
           >
-            Crie personagens para suas aventuras de RPG ou dê vida aos protagonistas das suas histórias.
+            {t("index.subtitle")}
           </motion.p>
 
           <motion.div
@@ -50,24 +52,24 @@ const Index = () => {
       <section className="py-16 px-4 bg-background">
         <div className="container max-w-4xl">
           <h2 className="font-heading text-2xl text-center text-foreground mb-12">
-            Seu grimório de personagens
+            {t("index.sectionTitle")}
           </h2>
           <div className="grid gap-8 sm:grid-cols-3">
             {[
               {
                 icon: Sparkles,
-                title: "Dois Modos",
-                desc: "Fichas técnicas de RPG ou fichas narrativas para escritores.",
+                title: t("index.features.modes.title"),
+                desc: t("index.features.modes.desc"),
               },
               {
                 icon: Scroll,
-                title: "Flexível",
-                desc: "Atributos dinâmicos, templates de sistema e campos personalizáveis.",
+                title: t("index.features.flexible.title"),
+                desc: t("index.features.flexible.desc"),
               },
               {
                 icon: Users,
-                title: "Catálogo",
-                desc: "Organize dezenas de personagens com filtros, tags e busca.",
+                title: t("index.features.catalog.title"),
+                desc: t("index.features.catalog.desc"),
               },
             ].map((feature, i) => (
               <motion.div

@@ -157,4 +157,74 @@
     pointer-events: none;
     z-index: 1;
   }
+
+  .astral-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  }
+
+  .glass-panel {
+    backdrop-filter: blur(16px);
+    background-color: hsl(var(--secondary) / 0.8);
+  }
+
+  .nebula-shadow {
+    box-shadow: 0 20px 50px hsl(var(--background) / 0.4);
+  }
+
+  .focus-bloom:hover {
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.2);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .glass-card {
+    background: hsl(var(--foreground) / 0.03);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid hsl(var(--foreground) / 0.08);
+    box-shadow: 0 25px 50px -12px hsl(0 0% 0% / 0.5);
+  }
+
+  .input-glow:focus-within {
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.2);
+  }
+
+  .settings-runes {
+    background-image:
+      radial-gradient(ellipse at 20% 20%, hsl(var(--primary) / 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, hsl(var(--accent) / 0.05) 0%, transparent 60%);
+    position: relative;
+  }
+
+  .settings-runes::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      linear-gradient(45deg, transparent 49.5%, hsl(var(--accent) / 0.06) 50%, transparent 50.5%),
+      linear-gradient(-45deg, transparent 49.5%, hsl(var(--accent) / 0.06) 50%, transparent 50.5%),
+      linear-gradient(0deg, transparent 49.5%, hsl(var(--accent) / 0.04) 50%, transparent 50.5%),
+      linear-gradient(90deg, transparent 49.5%, hsl(var(--accent) / 0.04) 50%, transparent 50.5%);
+    background-size: 60px 60px;
+    opacity: 1;
+  }
+
+  .settings-card-topline::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--accent) / 0.45), transparent);
+  }
 }

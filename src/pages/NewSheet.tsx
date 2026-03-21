@@ -39,6 +39,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import SheetSidebar from "@/components/SheetSidebar";
+import { useLocale } from "@/i18n/locale";
 
 /* ─── Types ─── */
 interface Attribute {
@@ -99,6 +100,7 @@ const uid = () => String(nextId++);
 
 /* ─── Component ─── */
 const NewSheet = () => {
+  const { t } = useLocale();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const type = searchParams.get("type") as "RPG" | "STORY" | null;
@@ -108,7 +110,7 @@ const NewSheet = () => {
     return (
       <div className="container max-w-lg py-16 px-4 text-center">
         <h1 className="font-display text-2xl text-foreground mb-8">
-          Escolha o tipo de ficha
+          {t("newSheet.chooseType")}
         </h1>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
@@ -117,7 +119,7 @@ const NewSheet = () => {
             onClick={() => navigate("/sheets/new?type=RPG")}
             className="gap-2"
           >
-            <Dices className="w-5 h-5" /> Ficha de RPG
+            <Dices className="w-5 h-5" /> {t("newSheet.rpg")}
           </Button>
           <Button
             variant="story"
@@ -125,7 +127,7 @@ const NewSheet = () => {
             onClick={() => navigate("/sheets/new?type=STORY")}
             className="gap-2"
           >
-            <Feather className="w-5 h-5" /> Ficha de Personagem
+            <Feather className="w-5 h-5" /> {t("newSheet.story")}
           </Button>
         </div>
       </div>

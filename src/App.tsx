@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LocaleProvider } from "@/i18n/locale";
+import { AuthProvider } from "@/auth/AuthProvider";
 import Header from "@/components/Header";
 import Index from "./pages/Index";
 import NewSheet from "./pages/NewSheet";
@@ -41,15 +42,17 @@ const AppLayout = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <LocaleProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppLayout />
-        </BrowserRouter>
-      </TooltipProvider>
-    </LocaleProvider>
+    <AuthProvider>
+      <LocaleProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppLayout />
+          </BrowserRouter>
+        </TooltipProvider>
+      </LocaleProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

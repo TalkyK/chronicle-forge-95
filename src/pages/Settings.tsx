@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Shield, Bell, User, Lock, Globe, ArrowLeft } from "lucide-react";
 import { useLocale } from "@/i18n/locale";
 import type { Locale, MessageKey } from "@/i18n/messages";
+import { upsertMyProfileLocale } from "@/data/profiles";
 
 type PanelId = "idioma" | "conta" | "privacidade" | "notificacoes" | "seguranca";
 
@@ -166,6 +167,9 @@ const Settings = () => {
                       onClick={() => {
                         setSelectedLanguage(opt.id);
                         setLocale(opt.id as Locale);
+                        upsertMyProfileLocale(opt.id as Locale).catch(() => {
+                          // silencioso: sem sessão ou falha de rede não deve quebrar a UI
+                        });
                       }}
                       className={
                         "border rounded-sm p-4 text-center transition-colors bg-background hover:bg-foreground/5 " +

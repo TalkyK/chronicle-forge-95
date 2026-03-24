@@ -1,6 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, KeyRound, Lock, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useLocale } from "@/i18n/locale";
+import { useAuth } from "@/auth/AuthProvider";
+import { toast } from "@/hooks/use-toast";
 
 type Coin = {
   x: number;
@@ -21,8 +24,14 @@ function getThemeAccentColor(): string {
 
 const Login = () => {
   const { t } = useLocale();
+  const navigate = useNavigate();
+  const { signInWithPassword, signUpWithPassword } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
+
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -138,6 +147,31 @@ const Login = () => {
               className="space-y-5"
               onSubmit={(e) => {
                 e.preventDefault();
+                if (isSubmitting) return;
+                const email = identifier.trim();
+                if (!email || !password) {
+                  toast({
+                    variant: "destructive",
+                    title: "Dados inválidos",
+                    description: "Informe usuário/e-mail e senha.",
+                  });
+                  return;
+                }
+
+                setIsSubmitting(true);
+                signInWithPassword({ email, password })
+                  .then(() => {
+                    toast({ title: "Bem-vindo!", description: "Login realizado com sucesso." });
+                    navigate("/catalog");
+                  })
+                  .catch((err: unknown) => {
+                    const message =
+                      err && typeof err === "object" && "message" in err
+                        ? String((err as { message?: unknown }).message)
+                        : "Não foi possível fazer login.";
+                    toast({ variant: "destructive", title: "Falha no login", description: message });
+                  })
+                  .finally(() => setIsSubmitting(false));
               }}
             >
               <div className="space-y-1.5 group">
@@ -150,6 +184,8 @@ const Login = () => {
                     placeholder={t("login.usernamePlaceholder")}
                     type="text"
                     autoComplete="username"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                   />
                   <User className="absolute right-4 top-3.5 w-5 h-5 text-foreground/20" />
                 </div>
@@ -165,6 +201,8 @@ const Login = () => {
                     placeholder={t("login.passwordPlaceholder")}
                     type="password"
                     autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
                   <KeyRound className="absolute right-4 top-3.5 w-5 h-5 text-foreground/20" />
                 </div>
@@ -192,6 +230,7 @@ const Login = () => {
                 <button
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-heading font-bold py-4 rounded-xl flex items-center justify-center gap-2 transform transition-all duration-300 active:scale-[0.98] shadow-lg shadow-primary/20 group"
                   type="submit"
+                  disabled={isSubmitting}
                 >
                   <span>{t("login.submit")}</span>
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
@@ -205,6 +244,36 @@ const Login = () => {
                 <button
                   type="button"
                   className="text-accent font-bold hover:underline underline-offset-4 ml-1"
+                  onClick={() => {
+                    if (isSubmitting) return;
+                    const email = identifier.trim();
+                    if (!email || !password) {
+                      toast({
+                        variant: "destructive",
+                        title: "Dados inválidos",
+                        description: "Informe usuário/e-mail e senha para criar a conta.",
+                      });
+                      return;
+                    }
+
+                    setIsSubmitting(true);
+                    signUpWithPassword({ email, password })
+                      .then(() => {
+                        toast({
+                          title: "Conta criada",
+                          description:
+                            "Se a confirmação de e-mail estiver ativa, verifique sua caixa de entrada.",
+                        });
+                      })
+                      .catch((err: unknown) => {
+                        const message =
+                          err && typeof err === "object" && "message" in err
+                            ? String((err as { message?: unknown }).message)
+                            : "Não foi possível criar a conta.";
+                        toast({ variant: "destructive", title: "Falha ao criar conta", description: message });
+                      })
+                      .finally(() => setIsSubmitting(false));
+                  }}
                 >
                   {t("login.register")}
                 </button>

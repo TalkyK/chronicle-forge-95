@@ -9,6 +9,7 @@ interface InteractiveCoinProps {
 const InteractiveCoin = ({ onSelect }: InteractiveCoinProps) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [coinImageFailed, setCoinImageFailed] = useState(false);
 
   const handleFlip = useCallback(() => {
     if (isAnimating) return;
@@ -57,8 +58,20 @@ const InteractiveCoin = ({ onSelect }: InteractiveCoinProps) => {
             }}
           >
             <div className="absolute inset-2 rounded-full border border-primary-foreground/20" />
-            <Dices className="w-12 h-12 text-primary-foreground drop-shadow-lg" />
-            <span className="font-display text-lg text-primary-foreground tracking-wider">RPG</span>
+            {!coinImageFailed ? (
+              <img
+                src="/coin.png"
+                alt="Moeda"
+                className="w-28 h-28 sm:w-32 sm:h-32 object-contain drop-shadow-lg select-none pointer-events-none"
+                draggable={false}
+                onError={() => setCoinImageFailed(true)}
+              />
+            ) : (
+              <>
+                <Dices className="w-12 h-12 text-primary-foreground drop-shadow-lg" />
+                <span className="font-display text-lg text-primary-foreground tracking-wider">RPG</span>
+              </>
+            )}
             <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-primary-foreground/10 to-transparent animate-shimmer" style={{ backgroundSize: "200% 100%" }} />
           </div>
 

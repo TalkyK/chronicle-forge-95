@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Locale, MessageKey } from "./messages";
 import { translate } from "./messages";
+import { supabase } from "@/lib/supabaseClient";
+import { fetchMyProfileLocale } from "@/data/profiles";
 
 type LocaleContextValue = {
   locale: Locale;
@@ -34,6 +36,34 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  useEffect(() => {
+    let canceled = false;
+
+    const syncFromProfile = async () => {
+      const profileLocale = await fetchMyProfileLocale();
+      if (canceled) return;
+      if (profileLocale) {
+        setLocaleState(profileLocale);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(STORAGE_KEY, profileLocale);
+        }
+      }
+    };
+
+    syncFromProfile();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        syncFromProfile();
+      }
+    });
+
+    return () => {
+      canceled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
   const value = useMemo<LocaleContextValue>(
     () => ({

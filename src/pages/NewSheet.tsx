@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -40,6 +40,8 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import SheetSidebar from "@/components/SheetSidebar";
 import { useLocale } from "@/i18n/locale";
+import { exportRpgSheetPdf, exportStorySheetPdf } from "@/lib/pdf/sheetPdf";
+import { toast } from "@/hooks/use-toast";
 
 /* ─── Types ─── */
 interface Attribute {
@@ -157,6 +159,11 @@ const AGE_RANGES = ["Jovem", "Adulto", "Ancião", "Imortal"] as const;
 const StorySheetDashboard = () => {
   const navigate = useNavigate();
 
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   const [name, setName] = useState("");
   const [codename, setCodename] = useState("");
   const [ageRange, setAgeRange] = useState("");
@@ -167,6 +174,46 @@ const StorySheetDashboard = () => {
   const [archetype, setArchetype] = useState("HERO");
   const [motivation, setMotivation] = useState("");
   const [relations, setRelations] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+    };
+  }, [avatarUrl]);
+
+  const handleAvatarPick = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    setAvatarFile(file);
+    setAvatarUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  };
+
+  const handleExportPdf = async () => {
+    if (isExportingPdf) return;
+    try {
+      setIsExportingPdf(true);
+      await exportStorySheetPdf({
+        name,
+        codename,
+        ageRange,
+        personalities,
+        ability,
+        storyRole,
+        archetype,
+        motivation,
+        relations,
+        avatarFile,
+      });
+      toast({ title: "PDF gerado", description: "A ficha foi baixada em formato PDF." });
+    } catch {
+      toast({ variant: "destructive", title: "Falha ao gerar PDF", description: "Tente novamente." });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   const addPersonality = (val: string) => {
     const trimmed = val.trim();
@@ -223,7 +270,7 @@ const StorySheetDashboard = () => {
                 <FileText className="w-3.5 h-3.5" />
                 Rascunho
               </Button>
-              <Button variant="story" size="sm" className="gap-1.5">
+              <Button variant="story" size="sm" className="gap-1.5" onClick={handleExportPdf} disabled={isExportingPdf}>
                 <Save className="w-3.5 h-3.5" />
                 Salvar Personagem
               </Button>
@@ -254,12 +301,43 @@ const StorySheetDashboard = () => {
                   <div className="flex flex-col md:flex-row gap-6">
                     {/* Avatar 3:4 */}
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-36 h-48 rounded-xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center cursor-pointer hover:border-accent/50 transition-colors group">
-                        <ImagePlus className="w-8 h-8 text-muted-foreground group-hover:text-accent transition-colors" />
-                        <span className="text-xs text-muted-foreground font-body mt-1">
-                          Enviar Avatar
-                        </span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        className={
+                          "w-36 h-48 rounded-xl border-2 bg-muted/50 flex flex-col items-center justify-center cursor-pointer transition-colors group overflow-hidden " +
+                          (avatarUrl
+                            ? "border-border hover:border-accent/50"
+                            : "border-dashed border-border hover:border-accent/50")
+                        }
+                        aria-label="Selecionar avatar"
+                      >
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt="Avatar selecionado"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <>
+                            <ImagePlus className="w-8 h-8 text-muted-foreground group-hover:text-accent transition-colors" />
+                            <span className="text-xs text-muted-foreground font-body mt-1">
+                              Enviar Avatar
+                            </span>
+                          </>
+                        )}
+                      </button>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          handleAvatarPick(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
                       <span className="text-xs text-muted-foreground font-body">
                         Dimensão recomendada: 3:4
                       </span>
@@ -440,7 +518,7 @@ const StorySheetDashboard = () => {
                     <Trash2 className="w-4 h-4" />
                     Descartar
                   </Button>
-                  <Button variant="story" className="gap-1.5">
+                  <Button variant="story" className="gap-1.5" onClick={handleExportPdf} disabled={isExportingPdf}>
                     <Save className="w-4 h-4" />
                     Salvar Personagem
                   </Button>
@@ -457,6 +535,11 @@ const StorySheetDashboard = () => {
 /* ─── RPG Dashboard ─── */
 const RpgSheetDashboard = () => {
   const navigate = useNavigate();
+
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const [name, setName] = useState("");
   const [system, setSystem] = useState("D&D 5e");
@@ -475,6 +558,49 @@ const RpgSheetDashboard = () => {
     { id: uid(), name: "Cajado de Ébano", quantity: 1, weight: "2kg", notes: "+1 em rolagens de dano mágico", equipped: true },
     { id: uid(), name: "Poção de Cura", quantity: 3, weight: "0.5kg", notes: "Recupera 2d4+2 HP", equipped: false },
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+    };
+  }, [avatarUrl]);
+
+  const handleAvatarPick = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    setAvatarFile(file);
+    setAvatarUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  };
+
+  const handleExportPdf = async () => {
+    if (isExportingPdf) return;
+    try {
+      setIsExportingPdf(true);
+      await exportRpgSheetPdf({
+        name,
+        system,
+        notes,
+        attributes: attributes.map((a) => ({ label: a.label, value: a.value })),
+        skills: skills.map((s) => ({ name: s.name, description: s.description })),
+        inventory: inventory.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          weight: i.weight,
+          notes: i.notes,
+          equipped: i.equipped,
+        })),
+        avatarFile,
+      });
+      toast({ title: "PDF gerado", description: "A ficha foi baixada em formato PDF." });
+    } catch {
+      toast({ variant: "destructive", title: "Falha ao gerar PDF", description: "Tente novamente." });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   /* Handlers */
   const handleSystemChange = (val: string) => {
@@ -528,7 +654,7 @@ const RpgSheetDashboard = () => {
                 <FileText className="w-3.5 h-3.5" />
                 Save Draft
               </Button>
-              <Button variant="rpg" size="sm" className="gap-1.5">
+              <Button variant="rpg" size="sm" className="gap-1.5" onClick={handleExportPdf} disabled={isExportingPdf}>
                 <Save className="w-3.5 h-3.5" />
                 Save Sheet
               </Button>
@@ -559,12 +685,43 @@ const RpgSheetDashboard = () => {
                   <div className="flex flex-col md:flex-row gap-6">
                     {/* Avatar */}
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-32 h-32 rounded-xl border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center cursor-pointer hover:border-primary/50 transition-colors group">
-                        <ImagePlus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                        <span className="text-xs text-muted-foreground font-body mt-1">
-                          Upload Avatar
-                        </span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        className={
+                          "w-32 h-32 rounded-xl border-2 bg-muted/50 flex flex-col items-center justify-center cursor-pointer transition-colors group overflow-hidden " +
+                          (avatarUrl
+                            ? "border-border hover:border-primary/50"
+                            : "border-dashed border-border hover:border-primary/50")
+                        }
+                        aria-label="Selecionar avatar"
+                      >
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt="Avatar selecionado"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <>
+                            <ImagePlus className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <span className="text-xs text-muted-foreground font-body mt-1">
+                              Upload Avatar
+                            </span>
+                          </>
+                        )}
+                      </button>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          handleAvatarPick(file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
                     </div>
 
                     {/* Fields */}
@@ -840,7 +997,7 @@ const RpgSheetDashboard = () => {
                     <FileText className="w-4 h-4" />
                     Save Draft
                   </Button>
-                  <Button variant="rpg" className="gap-1.5">
+                  <Button variant="rpg" className="gap-1.5" onClick={handleExportPdf} disabled={isExportingPdf}>
                     <Save className="w-4 h-4" />
                     Save Sheet
                   </Button>

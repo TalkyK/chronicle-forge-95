@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, KeyRound, Lock, User } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useLocale } from "@/i18n/locale";
 import { useAuth } from "@/auth/AuthProvider";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { updateMyProfile } from "@/data/profiles";
+
+type LoginTab = "login" | "register" | "complete";
 
 type Coin = {
   x: number;
@@ -25,13 +29,43 @@ function getThemeAccentColor(): string {
 const Login = () => {
   const { t } = useLocale();
   const navigate = useNavigate();
-  const { signInWithPassword, signUpWithPassword } = useAuth();
+  const { signInWithPassword, signUpWithPassword, user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
 
+  const tabFromQuery = (): LoginTab => {
+    const raw = (searchParams.get("tab") ?? "").toLowerCase();
+    if (raw === "register" || raw === "cadastro") return "register";
+    if (raw === "complete" || raw === "completar") return "complete";
+    return "login";
+  };
+
+  const [tab, setTab] = useState<LoginTab>(tabFromQuery);
+
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setTab(tabFromQuery());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (tab === "complete" && user?.email) {
+      setIdentifier(user.email);
+    }
+  }, [tab, user?.email]);
+
+  const setTabAndUrl = (next: LoginTab) => {
+    setTab(next);
+    const sp = new URLSearchParams(searchParams);
+    if (next === "login") sp.delete("tab");
+    else sp.set("tab", next);
+    setSearchParams(sp, { replace: true });
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -117,7 +151,7 @@ const Login = () => {
   }, []);
 
   return (
-    <div className="bg-background text-foreground overflow-hidden min-h-screen selection:bg-primary/30">
+    <div className="bg-background text-foreground overflow-hidden min-h-screen selection:bg-primary selection:text-white">
       {/* Canvas Animation Layer */}
       <canvas ref={canvasRef} className="fixed inset-0 w-full h-full pointer-events-none z-0" />
 
@@ -139,9 +173,15 @@ const Login = () => {
                 <Lock className="w-7 h-7 text-primary" />
               </div>
               <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground text-center">
-                {t("login.title")}
+                {tab === "login" ? t("login.title") : tab === "register" ? "Criar conta" : "Completar cadastro"}
               </h1>
             </div>
+
+            {tab === "complete" && !user && (
+              <div className="mb-6 rounded-xl border border-border/50 bg-foreground/5 p-4 text-sm text-muted-foreground font-body">
+                Para completar o cadastro, primeiro entre com Google.
+              </div>
+            )}
 
             <form
               className="space-y-5"
@@ -149,34 +189,135 @@ const Login = () => {
                 e.preventDefault();
                 if (isSubmitting) return;
                 const email = identifier.trim();
-                if (!email || !password) {
+
+                if (tab === "login") {
+                  if (!email || !password) {
+                    toast({
+                      variant: "destructive",
+                      title: "Dados inválidos",
+                      description: "Informe usuário/e-mail e senha.",
+                    });
+                    return;
+                  }
+
+                  setIsSubmitting(true);
+                  signInWithPassword({ email, password })
+                    .then(() => {
+                      toast({ title: "Bem-vindo!", description: "Login realizado com sucesso." });
+                      navigate("/catalog");
+                    })
+                    .catch((err: unknown) => {
+                      const message =
+                        err && typeof err === "object" && "message" in err
+                          ? String((err as { message?: unknown }).message)
+                          : "Não foi possível fazer login.";
+                      toast({ variant: "destructive", title: "Falha no login", description: message });
+                    })
+                    .finally(() => setIsSubmitting(false));
+                  return;
+                }
+
+                if (tab === "register") {
+                  if (!email || !password) {
+                    toast({
+                      variant: "destructive",
+                      title: "Dados inválidos",
+                      description: "Informe e-mail e senha para criar a conta.",
+                    });
+                    return;
+                  }
+
+                  setIsSubmitting(true);
+                  signUpWithPassword({ email, password })
+                    .then(() => {
+                      return supabase.auth.getSession();
+                    })
+                    .then(({ data }) => {
+                      const trimmed = displayName.trim();
+                      if (data.session) {
+                        if (trimmed) {
+                          updateMyProfile({ display_name: trimmed }).catch(() => {
+                            // silencioso
+                          });
+                        }
+                        toast({ title: "Conta criada", description: "Bem-vindo!" });
+                        navigate("/catalog");
+                        return;
+                      }
+
+                      toast({
+                        title: "Conta criada",
+                        description: "Verifique seu e-mail para confirmar e depois faça login.",
+                      });
+                      setTabAndUrl("login");
+                    })
+                    .catch((err: unknown) => {
+                      const message =
+                        err && typeof err === "object" && "message" in err
+                          ? String((err as { message?: unknown }).message)
+                          : "Não foi possível criar a conta.";
+                      toast({ variant: "destructive", title: "Falha ao criar conta", description: message });
+                    })
+                    .finally(() => setIsSubmitting(false));
+                  return;
+                }
+
+                // complete
+                if (!user) {
+                  toast({ variant: "destructive", title: "Entre com Google", description: "Faça login com Google para continuar." });
+                  return;
+                }
+
+                if (!password || !displayName.trim()) {
                   toast({
                     variant: "destructive",
                     title: "Dados inválidos",
-                    description: "Informe usuário/e-mail e senha.",
+                    description: "Informe nome de usuário e senha.",
                   });
                   return;
                 }
 
                 setIsSubmitting(true);
-                signInWithPassword({ email, password })
+                Promise.all([
+                  updateMyProfile({ display_name: displayName.trim() }),
+                  supabase.auth.updateUser({ password }),
+                ])
                   .then(() => {
-                    toast({ title: "Bem-vindo!", description: "Login realizado com sucesso." });
+                    toast({ title: "Cadastro concluído", description: "Conta configurada com sucesso." });
                     navigate("/catalog");
                   })
                   .catch((err: unknown) => {
                     const message =
                       err && typeof err === "object" && "message" in err
                         ? String((err as { message?: unknown }).message)
-                        : "Não foi possível fazer login.";
-                    toast({ variant: "destructive", title: "Falha no login", description: message });
+                        : "Não foi possível concluir o cadastro.";
+                    toast({ variant: "destructive", title: "Falha", description: message });
                   })
                   .finally(() => setIsSubmitting(false));
               }}
             >
+              {(tab === "register" || tab === "complete") && (
+                <div className="space-y-1.5 group">
+                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground ml-1">
+                    Nome de usuário
+                  </label>
+                  <div className="relative input-glow transition-all duration-300">
+                    <input
+                      className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3.5 text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-primary/50 focus:ring-0 transition-all font-body"
+                      placeholder="Escolha um nome"
+                      type="text"
+                      autoComplete="nickname"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                    />
+                    <User className="absolute right-4 top-3.5 w-5 h-5 text-foreground/20" />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1.5 group">
                 <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground ml-1">
-                  {t("login.username")}
+                  {tab === "complete" ? "E-mail" : t("login.username")}
                 </label>
                 <div className="relative input-glow transition-all duration-300">
                   <input
@@ -186,6 +327,7 @@ const Login = () => {
                     autoComplete="username"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
+                    disabled={tab === "complete"}
                   />
                   <User className="absolute right-4 top-3.5 w-5 h-5 text-foreground/20" />
                 </div>
@@ -218,12 +360,14 @@ const Login = () => {
                     {t("login.rememberMe")}
                   </span>
                 </label>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-accent hover:underline underline-offset-4 transition-all"
-                >
-                  {t("login.forgotPassword")}
-                </button>
+                {tab === "login" && (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-accent hover:underline underline-offset-4 transition-all"
+                  >
+                    {t("login.forgotPassword")}
+                  </button>
+                )}
               </div>
 
               <div className="pt-4">
@@ -232,51 +376,91 @@ const Login = () => {
                   type="submit"
                   disabled={isSubmitting}
                 >
-                  <span>{t("login.submit")}</span>
+                  <span>
+                    {tab === "login" ? t("login.submit") : tab === "register" ? "Criar conta" : "Concluir"}
+                  </span>
                   <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                 </button>
               </div>
+
+              {(tab === "register" || tab === "login" || (tab === "complete" && !user)) && (
+                <button
+                  type="button"
+                  className="w-full bg-foreground/5 hover:bg-foreground/10 text-foreground font-heading font-bold py-4 rounded-xl flex items-center justify-center gap-2 transform transition-all duration-300 active:scale-[0.98] border border-foreground/10"
+                  disabled={isSubmitting}
+                  onClick={async () => {
+                    if (isSubmitting) return;
+                    setIsSubmitting(true);
+                    try {
+                      const { data, error } = await supabase.auth.signInWithOAuth({
+                        provider: "google",
+                        options: {
+                          redirectTo: `${window.location.origin}/login?tab=complete`,
+                          skipBrowserRedirect: true,
+                        },
+                      });
+
+                      if (error) {
+                        toast({
+                          variant: "destructive",
+                          title: "Google indisponível",
+                          description:
+                            "O provedor Google não está habilitado no Supabase (Auth → Providers). Ative e tente novamente.",
+                        });
+                        setIsSubmitting(false);
+                        return;
+                      }
+
+                      if (!data?.url) {
+                        toast({
+                          variant: "destructive",
+                          title: "Falha",
+                          description: "Não foi possível iniciar o login com Google.",
+                        });
+                        setIsSubmitting(false);
+                        return;
+                      }
+
+                      window.location.assign(data.url);
+                    } catch {
+                      toast({ variant: "destructive", title: "Falha", description: "Não foi possível entrar com Google." });
+                      setIsSubmitting(false);
+                    }
+                  }}
+                >
+                  <span className="w-6 h-6 rounded-full bg-foreground/10 flex items-center justify-center font-mono">G</span>
+                  <span>Continuar com Google</span>
+                </button>
+              )}
             </form>
 
             <div className="mt-8 text-center">
               <p className="text-muted-foreground text-sm font-body">
-                {t("login.noAccount")}
-                <button
-                  type="button"
-                  className="text-accent font-bold hover:underline underline-offset-4 ml-1"
-                  onClick={() => {
-                    if (isSubmitting) return;
-                    const email = identifier.trim();
-                    if (!email || !password) {
-                      toast({
-                        variant: "destructive",
-                        title: "Dados inválidos",
-                        description: "Informe usuário/e-mail e senha para criar a conta.",
-                      });
-                      return;
-                    }
-
-                    setIsSubmitting(true);
-                    signUpWithPassword({ email, password })
-                      .then(() => {
-                        toast({
-                          title: "Conta criada",
-                          description:
-                            "Se a confirmação de e-mail estiver ativa, verifique sua caixa de entrada.",
-                        });
-                      })
-                      .catch((err: unknown) => {
-                        const message =
-                          err && typeof err === "object" && "message" in err
-                            ? String((err as { message?: unknown }).message)
-                            : "Não foi possível criar a conta.";
-                        toast({ variant: "destructive", title: "Falha ao criar conta", description: message });
-                      })
-                      .finally(() => setIsSubmitting(false));
-                  }}
-                >
-                  {t("login.register")}
-                </button>
+                {tab === "login" ? (
+                  <>
+                    {t("login.noAccount")}
+                    <button
+                      type="button"
+                      className="text-accent font-bold hover:underline underline-offset-4 ml-1"
+                      onClick={() => setTabAndUrl("register")}
+                      disabled={isSubmitting}
+                    >
+                      {t("login.register")}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Já tem uma conta?
+                    <button
+                      type="button"
+                      className="text-accent font-bold hover:underline underline-offset-4 ml-1"
+                      onClick={() => setTabAndUrl("login")}
+                      disabled={isSubmitting}
+                    >
+                      Voltar ao login
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           </div>

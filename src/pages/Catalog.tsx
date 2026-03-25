@@ -1,17 +1,103 @@
 import {
-  Bell,
   BookOpen,
-  Lock,
   Plus,
   Settings,
   Sparkles,
   Users,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useLocale } from "@/i18n/locale";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/auth/AuthProvider";
+import { fetchMyProfile } from "@/data/profiles";
+import { listMySheets } from "@/data/sheets";
+import type { SheetRow } from "@/data/sheets";
+
+type SheetFilter = "ALL" | "RPG" | "STORY";
 
 const Catalog = () => {
   const { t } = useLocale();
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [sheets, setSheets] = useState<SheetRow[]>([]);
+  const [loadingSheets, setLoadingSheets] = useState(false);
+
+  const filterFromQuery = (): SheetFilter => {
+    const f = (searchParams.get("filter") ?? "").toLowerCase();
+    if (f === "rpg") return "RPG";
+    if (f === "story" || f === "personagem" || f === "personagens") return "STORY";
+    return "ALL";
+  };
+
+  const [activeFilter, setActiveFilter] = useState<SheetFilter>(filterFromQuery);
+
+  useEffect(() => {
+    setActiveFilter(filterFromQuery());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
+    let mounted = true;
+    setAvatarUrl(null);
+
+    if (!user) return;
+
+    fetchMyProfile()
+      .then((p) => {
+        if (!mounted) return;
+        setAvatarUrl(p?.avatar_url ?? null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setAvatarUrl(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    let mounted = true;
+    setSheets([]);
+
+    if (!user) return;
+
+    setLoadingSheets(true);
+    listMySheets()
+      .then((rows) => {
+        if (!mounted) return;
+        setSheets(rows);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSheets([]);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoadingSheets(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  const setFilter = (next: SheetFilter) => {
+    setActiveFilter(next);
+    const sp = new URLSearchParams(searchParams);
+    if (next === "ALL") sp.delete("filter");
+    if (next === "RPG") sp.set("filter", "rpg");
+    if (next === "STORY") sp.set("filter", "story");
+    setSearchParams(sp, { replace: true });
+  };
+
+  const filteredSheets = sheets.filter((s) => {
+    if (activeFilter === "ALL") return true;
+    return s.type === activeFilter;
+  });
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Top Navigation Bar */}
@@ -40,37 +126,20 @@ const Catalog = () => {
             >
               {t("nav.arcaneOrder")}
             </Link>
-            <Link
-              to="/catalog#codex"
-              className="text-foreground/60 hover:text-foreground font-mono uppercase tracking-widest text-xs transition-colors"
-            >
-              {t("nav.codex")}
-            </Link>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="text-primary/70 hover:text-primary transition-colors"
-              aria-label="Notificações"
-            >
-              <Bell className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              className="text-primary/70 hover:text-primary transition-colors"
-              aria-label="Magias"
-            >
-              <Sparkles className="w-5 h-5" />
-            </button>
-          </div>
-          <img
-            className="w-10 h-10 rounded-full border border-border/30 object-cover"
-            alt="Avatar do perfil"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVTrhEdSv9a9La2pu_Z8Go5-GtUDqbW7f0PhECmoKXIi9MAnl3Il8-L3jVWxqaKmDQ1Uyb1Rx_glGolEP6vtMMEWhpgKh7x0u_cyNaxQD81dUBn_oWPLr4c2jM0_Z1v3XCqv0LWThJN5pUF1Tv11zSxMaO-gOF6yFUqNRwrOCyijKtfJm9hUlbfJYs7CY1eWDeF8EOcjamKpoYk4xiCGYlEK-xGu4zWUuusasCNPHbD8Yt7aZw7gks8zy4mGYOlCSoE9opFR0VgE66"
-          />
+          <Link to={user ? "/settings?panel=conta" : "/login"} aria-label="Configurações e conta">
+            <img
+              className="w-10 h-10 rounded-full border border-border/30 object-cover"
+              alt="Avatar do perfil"
+              src={
+                avatarUrl ??
+                "https://lh3.googleusercontent.com/aida-public/AB6AXuCVTrhEdSv9a9La2pu_Z8Go5-GtUDqbW7f0PhECmoKXIi9MAnl3Il8-L3jVWxqaKmDQ1Uyb1Rx_glGolEP6vtMMEWhpgKh7x0u_cyNaxQD81dUBn_oWPLr4c2jM0_Z1v3XCqv0LWThJN5pUF1Tv11zSxMaO-gOF6yFUqNRwrOCyijKtfJm9hUlbfJYs7CY1eWDeF8EOcjamKpoYk4xiCGYlEK-xGu4zWUuusasCNPHbD8Yt7aZw7gks8zy4mGYOlCSoE9opFR0VgE66"
+              }
+            />
+          </Link>
         </div>
       </nav>
 
@@ -91,15 +160,21 @@ const Catalog = () => {
 
           <nav className="space-y-1">
             <Link
-              to="/catalog#biblioteca"
-              className="w-full flex items-center gap-3 text-foreground/50 hover:text-foreground hover:bg-background/40 hover:translate-x-1 px-4 py-3 rounded-lg transition-all duration-300"
+              to="/catalog#fichas"
+              onClick={() => setFilter("ALL")}
+              className={
+                "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 " +
+                (activeFilter === "ALL"
+                  ? "bg-gradient-to-r from-primary/20 to-transparent border-l-4 border-accent text-accent font-bold"
+                  : "text-foreground/50 hover:text-foreground hover:bg-background/40 hover:translate-x-1")
+              }
             >
               <BookOpen className="w-5 h-5" />
               <span className="text-sm font-mono uppercase tracking-widest">Biblioteca</span>
             </Link>
             <Link
               to="/catalog#fichas"
-              className="w-full flex items-center gap-3 bg-gradient-to-r from-primary/20 to-transparent border-l-4 border-accent text-accent font-bold px-4 py-3 transition-colors"
+              className="w-full flex items-center gap-3 text-foreground/50 hover:text-foreground hover:bg-background/40 hover:translate-x-1 px-4 py-3 rounded-lg transition-all duration-300"
             >
               <Sparkles className="w-5 h-5" />
               <span className="text-sm font-mono uppercase tracking-widest">Magias Ativas</span>
@@ -110,13 +185,6 @@ const Catalog = () => {
             >
               <Users className="w-5 h-5" />
               <span className="text-sm font-mono uppercase tracking-widest">Chat do Grupo</span>
-            </Link>
-            <Link
-              to="/catalog#cofre"
-              className="w-full flex items-center gap-3 text-foreground/50 hover:text-foreground hover:bg-background/40 hover:translate-x-1 px-4 py-3 rounded-lg transition-all duration-300"
-            >
-              <Lock className="w-5 h-5" />
-              <span className="text-sm font-mono uppercase tracking-widest">O Cofre</span>
             </Link>
           </nav>
         </div>
@@ -185,13 +253,25 @@ const Catalog = () => {
           <div className="flex bg-secondary p-1 rounded-full border border-border/50">
             <button
               type="button"
-              className="flex items-center gap-2 px-6 py-2 rounded-full astral-gradient text-primary-foreground font-mono text-xs uppercase tracking-tighter"
+              onClick={() => setFilter("RPG")}
+              className={
+                "flex items-center gap-2 px-6 py-2 rounded-full font-mono text-xs uppercase tracking-tighter transition-colors " +
+                (activeFilter === "RPG"
+                  ? "astral-gradient text-primary-foreground"
+                  : "text-foreground/50 hover:text-foreground")
+              }
             >
               <span>⚔️</span> {t("catalog.mode.rpg")}
             </button>
             <button
               type="button"
-              className="flex items-center gap-2 px-6 py-2 rounded-full text-foreground/50 font-mono text-xs uppercase tracking-tighter hover:text-foreground transition-colors"
+              onClick={() => setFilter("STORY")}
+              className={
+                "flex items-center gap-2 px-6 py-2 rounded-full font-mono text-xs uppercase tracking-tighter transition-colors " +
+                (activeFilter === "STORY"
+                  ? "astral-gradient text-primary-foreground"
+                  : "text-foreground/50 hover:text-foreground")
+              }
             >
               <span>🪶</span> {t("catalog.mode.story")}
             </button>
@@ -199,7 +279,63 @@ const Catalog = () => {
         </div>
 
         {/* Section: Fichas (Bento Grid) */}
-        <section id="fichas" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20" />
+          <section id="fichas" className="mb-20">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {!user && (
+                <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
+                  Faça login para ver suas fichas salvas.
+                </div>
+              )}
+
+              {user && loadingSheets && (
+                <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
+                  Carregando fichas...
+                </div>
+              )}
+
+              {user && !loadingSheets && filteredSheets.length === 0 && (
+                <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
+                  Nenhuma ficha encontrada para este filtro.
+                </div>
+              )}
+
+              {user && !loadingSheets &&
+                filteredSheets.map((sheet) => (
+                  <div
+                    key={sheet.id}
+                    className="rounded-xl border border-border/50 bg-secondary/40 p-6 hover:bg-secondary/60 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="font-display italic text-xl text-foreground truncate">
+                          {sheet.title}
+                        </div>
+                        <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-foreground/40">
+                          Atualizado: {new Date(sheet.updated_at).toLocaleDateString("pt-BR")}
+                        </div>
+                      </div>
+                      <span
+                        className={
+                          "inline-flex font-mono text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border " +
+                          (sheet.type === "RPG"
+                            ? "border-accent/40 bg-accent/10 text-accent"
+                            : "border-primary/30 bg-primary/10 text-primary")
+                        }
+                      >
+                        {sheet.type === "RPG" ? "RPG" : "História"}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 text-sm text-muted-foreground font-body line-clamp-3">
+                      {(sheet.type === "RPG"
+                        ? (sheet.data as any)?.notes
+                        : (sheet.data as any)?.motivation) ||
+                        "—"}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </section>
 
         {/* Section: Membros (List View) */}
         <section id="membros" className="mb-20">
@@ -223,7 +359,6 @@ const Catalog = () => {
         <section id="configuracoes" className="mb-20">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-3xl font-display italic">Configurações</h2>
-            <span className="font-mono text-xs uppercase tracking-widest text-foreground/40">Em breve</span>
           </div>
           <div className="h-24 rounded-xl border border-border/50 bg-secondary/40" />
         </section>
@@ -231,23 +366,6 @@ const Catalog = () => {
         <section id="biblioteca" className="mb-20">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-3xl font-display italic">Biblioteca</h2>
-            <span className="font-mono text-xs uppercase tracking-widest text-foreground/40">Em breve</span>
-          </div>
-          <div className="h-24 rounded-xl border border-border/50 bg-secondary/40" />
-        </section>
-
-        <section id="cofre" className="mb-20">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-display italic">O Cofre</h2>
-            <span className="font-mono text-xs uppercase tracking-widest text-foreground/40">Em breve</span>
-          </div>
-          <div className="h-24 rounded-xl border border-border/50 bg-secondary/40" />
-        </section>
-
-        <section id="codex" className="mb-20">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-display italic">Códice</h2>
-            <span className="font-mono text-xs uppercase tracking-widest text-foreground/40">Em breve</span>
           </div>
           <div className="h-24 rounded-xl border border-border/50 bg-secondary/40" />
         </section>
@@ -269,10 +387,6 @@ const Catalog = () => {
           aria-label={t("catalog.newSheet")}
         >
           <Plus className="w-5 h-5 text-primary-foreground" />
-        </Link>
-        <Link to="/catalog#cofre" className="flex flex-col items-center gap-1 text-foreground/40">
-          <Lock className="w-5 h-5" />
-          <span className="text-[10px] font-mono uppercase">{t("catalog.vault")}</span>
         </Link>
         <Link to="/settings" className="flex flex-col items-center gap-1 text-foreground/40">
           <Settings className="w-5 h-5" />

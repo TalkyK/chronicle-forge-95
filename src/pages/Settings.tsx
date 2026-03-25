@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import type { ChangeEventHandler } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Shield, Bell, User, Lock, Globe, ArrowLeft } from "lucide-react";
 import { useLocale } from "@/i18n/locale";
 import type { Locale, MessageKey } from "@/i18n/messages";
-import { upsertMyProfileLocale } from "@/data/profiles";
+import { fetchMyProfile, updateMyProfile, uploadMyAvatar, upsertMyProfileLocale } from "@/data/profiles";
+import { useAuth } from "@/auth/AuthProvider";
 
 type PanelId = "idioma" | "conta" | "privacidade" | "notificacoes" | "seguranca";
 
@@ -28,9 +30,19 @@ const languageOptions: LanguageOption[] = [
 
 const Settings = () => {
   const { locale, setLocale, t } = useLocale();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<PanelId>("idioma");
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageId>(locale);
   const [showNotif, setShowNotif] = useState(false);
+
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [displayName, setDisplayName] = useState<string>("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   const navItems = useMemo(
     () =>
@@ -57,6 +69,19 @@ const Settings = () => {
   };
 
   useEffect(() => {
+    const panel = searchParams.get("panel");
+    if (
+      panel === "idioma" ||
+      panel === "conta" ||
+      panel === "privacidade" ||
+      panel === "notificacoes" ||
+      panel === "seguranca"
+    ) {
+      setActivePanel(panel);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     if (!showNotif) return;
     const t = window.setTimeout(() => setShowNotif(false), 2500);
     return () => window.clearTimeout(t);
@@ -65,6 +90,96 @@ const Settings = () => {
   useEffect(() => {
     setSelectedLanguage(locale);
   }, [locale]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    setProfileLoading(true);
+    setAvatarUrl(null);
+
+    if (!user) {
+      setDisplayName("");
+      setProfileLoading(false);
+      return;
+    }
+
+    fetchMyProfile()
+      .then((p) => {
+        if (!mounted) return;
+        const nextDisplayName = (p?.display_name ?? "").trim();
+        setDisplayName(nextDisplayName);
+        setAvatarUrl(p?.avatar_url ?? null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setDisplayName("");
+        setAvatarUrl(null);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setProfileLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
+  const avatarInitials = useMemo(() => {
+    const base = (displayName || user?.email || "U").trim();
+    const parts = base.split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] ?? "U";
+    const second = parts.length > 1 ? parts[1]?.[0] : parts[0]?.[1];
+    return (first + (second ?? "")).toUpperCase();
+  }, [displayName, user?.email]);
+
+  const handleSaveProfile = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      const trimmed = displayName.trim();
+      await updateMyProfile({ display_name: trimmed.length ? trimmed : null });
+      save();
+    } catch {
+      window.alert("Não foi possível salvar seu perfil agora.");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handlePickAvatar = () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange: ChangeEventHandler<HTMLInputElement> = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      window.alert("A imagem deve ter no máximo 2 MB.");
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadMyAvatar(file);
+      setAvatarUrl(url);
+      save();
+    } catch {
+      window.alert("Não foi possível enviar sua imagem agora.");
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = "";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground settings-runes">
@@ -260,6 +375,12 @@ const Settings = () => {
                   Nome e identificação visíveis para outros jogadores e mestres
                 </div>
 
+                {!user && (
+                  <div className="text-sm text-muted-foreground italic">
+                    Você precisa estar logado para editar sua conta. <Link to="/login" className="text-accent hover:underline">Ir para login</Link>.
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block font-heading text-xs uppercase tracking-widest text-muted-foreground mb-2">
@@ -267,8 +388,9 @@ const Settings = () => {
                     </label>
                     <input
                       className="w-full bg-background border border-border/50 text-foreground px-3 py-2.5 rounded-sm outline-none focus:border-accent/60"
-                      defaultValue="Arathorn_Darkblade"
+                      value={user?.email ?? ""}
                       type="text"
+                      disabled
                     />
                   </div>
                   <div>
@@ -277,8 +399,11 @@ const Settings = () => {
                     </label>
                     <input
                       className="w-full bg-background border border-border/50 text-foreground px-3 py-2.5 rounded-sm outline-none focus:border-accent/60"
-                      defaultValue="Arathorn Darkblade"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
                       type="text"
+                      placeholder={profileLoading ? "Carregando..." : "Seu nome"}
+                      disabled={!user || profileLoading || savingProfile}
                     />
                   </div>
                 </div>
@@ -287,32 +412,36 @@ const Settings = () => {
                   <label className="block font-heading text-xs uppercase tracking-widest text-muted-foreground mb-2">E-mail</label>
                   <input
                     className="w-full bg-background border border-border/50 text-foreground px-3 py-2.5 rounded-sm outline-none focus:border-accent/60"
-                    defaultValue="arathorn@fichaquest.com"
+                    value={user?.email ?? ""}
                     type="email"
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <label className="block font-heading text-xs uppercase tracking-widest text-muted-foreground mb-2">
-                    Bio (Apresentação)
-                  </label>
-                  <textarea
-                    className="w-full bg-background border border-border/50 text-foreground px-3 py-2.5 rounded-sm outline-none focus:border-accent/60 min-h-[90px]"
-                    defaultValue="Mestre de campanhas épicas de D&D e Pathfinder. Criador de mundos e contador de histórias desde 2012."
+                    disabled
                   />
                 </div>
 
                 <div className="flex gap-3 mt-6 flex-wrap">
                   <button
                     type="button"
-                    onClick={save}
+                    onClick={handleSaveProfile}
                     className="font-heading text-xs tracking-widest uppercase px-6 py-2.5 rounded-sm border border-accent/60 bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                    disabled={profileLoading || savingProfile}
                   >
-                    Salvar Perfil
+                    {savingProfile ? "Salvando..." : "Salvar Perfil"}
                   </button>
                   <button
                     type="button"
                     className="font-heading text-xs tracking-widest uppercase px-6 py-2.5 rounded-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+                    onClick={() => {
+                      if (!user) return;
+                      fetchMyProfile()
+                        .then((p) => {
+                          setDisplayName((p?.display_name ?? "").trim());
+                          setAvatarUrl(p?.avatar_url ?? null);
+                        })
+                        .catch(() => {
+                          // silencioso
+                        });
+                    }}
+                    disabled={!user || profileLoading || savingProfile}
                   >
                     Cancelar
                   </button>
@@ -326,50 +455,38 @@ const Settings = () => {
                 </div>
 
                 <div className="flex items-center gap-6 flex-wrap">
-                  <div className="w-16 h-16 rounded-full astral-gradient flex items-center justify-center border border-border/50">
-                    <span className="font-heading text-xl font-bold text-primary-foreground">AR</span>
-                  </div>
+                  {avatarUrl ? (
+                    <img
+                      className="w-16 h-16 rounded-full border border-border/50 object-cover"
+                      alt="Avatar do perfil"
+                      src={avatarUrl}
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full astral-gradient flex items-center justify-center border border-border/50">
+                      <span className="font-heading text-xl font-bold text-primary-foreground">{avatarInitials}</span>
+                    </div>
+                  )}
                   <div>
                     <button
                       type="button"
+                      onClick={handlePickAvatar}
                       className="font-heading text-xs tracking-widest uppercase px-6 py-2.5 rounded-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors block"
+                      disabled={uploadingAvatar}
                     >
-                      Enviar Imagem
+                      {uploadingAvatar ? "Enviando..." : "Enviar Imagem"}
                     </button>
                     <p className="text-sm text-muted-foreground italic mt-2">
                       PNG ou JPG · Máx. 2 MB · 500×500px recomendado
                     </p>
+
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
                   </div>
-                </div>
-              </section>
-
-              <section className="bg-secondary border border-border/50 rounded-sm p-7 mb-6 relative settings-card-topline">
-                <div className="font-heading text-sm tracking-widest text-accent mb-1">Plano & Assinatura</div>
-                <div className="text-muted-foreground italic mb-6">Detalhes do seu plano atual na guilda</div>
-
-                <div className="flex items-center justify-between py-3 border-b border-border/50 gap-4">
-                  <div>
-                    <div className="text-base font-semibold text-foreground">Plano Mestre Pro</div>
-                    <div className="text-sm text-muted-foreground italic">
-                      Fichas ilimitadas · Campanhas ilimitadas · Exportação PDF
-                    </div>
-                  </div>
-                  <span className="inline-flex font-heading text-[10px] uppercase tracking-widest px-2 py-1 rounded-sm border border-border/60 bg-accent/10 text-accent">
-                    Ativo
-                  </span>
-                </div>
-
-                <div className="pt-3 text-sm text-muted-foreground">
-                  Próxima renovação: <span className="text-accent">15 de Abril de 2026</span>
-                </div>
-
-                <div className="flex gap-3 mt-6 flex-wrap">
-                  <button
-                    type="button"
-                    className="font-heading text-xs tracking-widest uppercase px-6 py-2.5 rounded-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
-                  >
-                    Gerenciar Assinatura
-                  </button>
                 </div>
               </section>
             </>

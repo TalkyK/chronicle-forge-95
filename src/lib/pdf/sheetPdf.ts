@@ -24,6 +24,13 @@ type RpgPdfData = {
   name: string;
   system: string;
   notes: string;
+  hp: string;
+  mp: string;
+  gold: string;
+  history: string;
+  statusBonus: string;
+  race: string;
+  characterClass: string;
   attributes: Array<{ label: string; value: string }>;
   skills: Array<{ name: string; description: string }>;
   inventory: Array<{ name: string; quantity: number; weight: string; notes: string; equipped: boolean }>;
@@ -255,6 +262,18 @@ export async function exportRpgSheetPdf(data: RpgPdfData) {
           { label: "Nome", value: data.name },
           { label: "Sistema", value: data.system },
           { label: "Notas", value: data.notes },
+        ],
+      },
+      {
+        heading: "Estrutura mínima (padronizada)",
+        fields: [
+          { label: "HP", value: data.hp },
+          { label: "MP", value: data.mp },
+          { label: "Ouro", value: data.gold },
+          { label: "Raça", value: data.race },
+          { label: "Classe", value: data.characterClass },
+          { label: "Bônus", value: data.statusBonus },
+          { label: "História", value: data.history },
         ],
       },
       {

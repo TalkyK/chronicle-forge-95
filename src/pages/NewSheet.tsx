@@ -42,6 +42,7 @@ import SheetSidebar from "@/components/SheetSidebar";
 import { useLocale } from "@/i18n/locale";
 import { exportRpgSheetPdf, exportStorySheetPdf } from "@/lib/pdf/sheetPdf";
 import { toast } from "@/hooks/use-toast";
+import { saveMySheet } from "@/data/sheets";
 
 /* ─── Types ─── */
 interface Attribute {
@@ -163,6 +164,7 @@ const StorySheetDashboard = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [sheetId, setSheetId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [codename, setCodename] = useState("");
@@ -195,6 +197,30 @@ const StorySheetDashboard = () => {
     if (isExportingPdf) return;
     try {
       setIsExportingPdf(true);
+
+      // Salva no banco (Biblioteca)
+      try {
+        const id = await saveMySheet({
+          id: sheetId,
+          type: "STORY",
+          title: name || codename || "Personagem",
+          data: {
+            name,
+            codename,
+            ageRange,
+            personalities,
+            ability,
+            storyRole,
+            archetype,
+            motivation,
+            relations,
+          },
+        });
+        setSheetId(id);
+      } catch {
+        // silencioso: PDF continua funcionando mesmo sem sessão/rede
+      }
+
       await exportStorySheetPdf({
         name,
         codename,
@@ -213,6 +239,50 @@ const StorySheetDashboard = () => {
     } finally {
       setIsExportingPdf(false);
     }
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const id = await saveMySheet({
+        id: sheetId,
+        type: "STORY",
+        title: name || codename || "Personagem",
+        data: {
+          name,
+          codename,
+          ageRange,
+          personalities,
+          ability,
+          storyRole,
+          archetype,
+          motivation,
+          relations,
+        },
+      });
+      setSheetId(id);
+      toast({ title: "Rascunho salvo", description: "A ficha foi salva na biblioteca." });
+    } catch {
+      toast({ variant: "destructive", title: "Não foi possível salvar", description: "Faça login para salvar na biblioteca." });
+    }
+  };
+
+  const handleDiscard = () => {
+    setSheetId(null);
+
+    if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+    setAvatarUrl(null);
+    setAvatarFile(null);
+
+    setName("");
+    setCodename("");
+    setAgeRange("");
+    setPersonalityInput("");
+    setPersonalities([]);
+    setAbility("");
+    setStoryRole("");
+    setArchetype("HERO");
+    setMotivation("");
+    setRelations("");
   };
 
   const addPersonality = (val: string) => {
@@ -266,7 +336,7 @@ const StorySheetDashboard = () => {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5 font-body">
+              <Button variant="outline" size="sm" className="gap-1.5 font-body" onClick={handleSaveDraft}>
                 <FileText className="w-3.5 h-3.5" />
                 Rascunho
               </Button>
@@ -514,6 +584,7 @@ const StorySheetDashboard = () => {
                   <Button
                     variant="ghost"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 font-body"
+                    onClick={handleDiscard}
                   >
                     <Trash2 className="w-4 h-4" />
                     Descartar
@@ -540,10 +611,21 @@ const RpgSheetDashboard = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [sheetId, setSheetId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [system, setSystem] = useState("D&D 5e");
   const [notes, setNotes] = useState("");
+
+  // Estrutura mínima padronizada (sempre presente e editável)
+  // Regras: HP/MP/Ouro devem ser TEXT (aceitam valores flexíveis)
+  const [hp, setHp] = useState("");
+  const [mp, setMp] = useState("");
+  const [gold, setGold] = useState("");
+  const [race, setRace] = useState("");
+  const [characterClass, setCharacterClass] = useState("");
+  const [statusBonus, setStatusBonus] = useState("");
+  const [history, setHistory] = useState("");
 
   const [attributes, setAttributes] = useState<Attribute[]>(
     TEMPLATES["D&D 5e"].map((a) => ({ id: uid(), ...a }))
@@ -579,10 +661,45 @@ const RpgSheetDashboard = () => {
     if (isExportingPdf) return;
     try {
       setIsExportingPdf(true);
+
+      // Salva no banco (Biblioteca)
+      try {
+        const id = await saveMySheet({
+          id: sheetId,
+          type: "RPG",
+          title: name || "Personagem",
+          data: {
+            name,
+            system,
+            notes,
+            hp,
+            mp,
+            gold,
+            race,
+            characterClass,
+            statusBonus,
+            history,
+            attributes,
+            skills,
+            inventory,
+          },
+        });
+        setSheetId(id);
+      } catch {
+        // silencioso: PDF continua funcionando mesmo sem sessão/rede
+      }
+
       await exportRpgSheetPdf({
         name,
         system,
         notes,
+        hp,
+        mp,
+        gold,
+        race,
+        characterClass,
+        statusBonus,
+        history,
         attributes: attributes.map((a) => ({ label: a.label, value: a.value })),
         skills: skills.map((s) => ({ name: s.name, description: s.description })),
         inventory: inventory.map((i) => ({
@@ -600,6 +717,59 @@ const RpgSheetDashboard = () => {
     } finally {
       setIsExportingPdf(false);
     }
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const id = await saveMySheet({
+        id: sheetId,
+        type: "RPG",
+        title: name || "Personagem",
+        data: {
+          name,
+          system,
+          notes,
+          hp,
+          mp,
+          gold,
+          race,
+          characterClass,
+          statusBonus,
+          history,
+          attributes,
+          skills,
+          inventory,
+        },
+      });
+      setSheetId(id);
+      toast({ title: "Rascunho salvo", description: "A ficha foi salva na biblioteca." });
+    } catch {
+      toast({ variant: "destructive", title: "Não foi possível salvar", description: "Faça login para salvar na biblioteca." });
+    }
+  };
+
+  const handleDiscard = () => {
+    setSheetId(null);
+
+    if (avatarUrl) URL.revokeObjectURL(avatarUrl);
+    setAvatarUrl(null);
+    setAvatarFile(null);
+
+    setName("");
+    setSystem("D&D 5e");
+    setNotes("");
+
+    setHp("");
+    setMp("");
+    setGold("");
+    setRace("");
+    setCharacterClass("");
+    setStatusBonus("");
+    setHistory("");
+
+    setAttributes(TEMPLATES["D&D 5e"].map((a) => ({ id: uid(), ...a })));
+    setSkills([]);
+    setInventory([]);
   };
 
   /* Handlers */
@@ -650,7 +820,7 @@ const RpgSheetDashboard = () => {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5 font-body">
+              <Button variant="outline" size="sm" className="gap-1.5 font-body" onClick={handleSaveDraft}>
                 <FileText className="w-3.5 h-3.5" />
                 Save Draft
               </Button>
@@ -766,6 +936,107 @@ const RpgSheetDashboard = () => {
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
                           className="font-body min-h-[80px] resize-none"
+                        />
+                      </div>
+
+                      {/* Estrutura mínima padronizada */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="race" className="font-heading text-sm">
+                            Raça
+                          </Label>
+                          <Input
+                            id="race"
+                            placeholder="Ex: Elfo, Humano, Anão..."
+                            value={race}
+                            onChange={(e) => setRace(e.target.value)}
+                            className="font-body"
+                            type="text"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="class" className="font-heading text-sm">
+                            Classe
+                          </Label>
+                          <Input
+                            id="class"
+                            placeholder="Ex: Mago, Guerreiro, Ladino..."
+                            value={characterClass}
+                            onChange={(e) => setCharacterClass(e.target.value)}
+                            className="font-body"
+                            type="text"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="hp" className="font-heading text-sm">
+                            Pontos de Vida (HP)
+                          </Label>
+                          <Input
+                            id="hp"
+                            placeholder="Ex: 40/40 · 100 HP · 30 + bônus"
+                            value={hp}
+                            onChange={(e) => setHp(e.target.value)}
+                            className="font-body"
+                            type="text"
+                            inputMode="text"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="mp" className="font-heading text-sm">
+                            Pontos de Mana (MP)
+                          </Label>
+                          <Input
+                            id="mp"
+                            placeholder="Ex: 75 MP (máx. 100)"
+                            value={mp}
+                            onChange={(e) => setMp(e.target.value)}
+                            className="font-body"
+                            type="text"
+                            inputMode="text"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="gold" className="font-heading text-sm">
+                            Ouro Total
+                          </Label>
+                          <Input
+                            id="gold"
+                            placeholder="Ex: 200 moedas · 50 (base) + 10 armadura"
+                            value={gold}
+                            onChange={(e) => setGold(e.target.value)}
+                            className="font-body"
+                            type="text"
+                            inputMode="text"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="statusBonus" className="font-heading text-sm">
+                          Bônus de Status
+                        </Label>
+                        <Textarea
+                          id="statusBonus"
+                          placeholder="Ex: +2 ataque · +1 CA · resistência a fogo..."
+                          value={statusBonus}
+                          onChange={(e) => setStatusBonus(e.target.value)}
+                          className="font-body min-h-[70px] resize-none"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="history" className="font-heading text-sm">
+                          História do Personagem
+                        </Label>
+                        <Textarea
+                          id="history"
+                          placeholder="Escreva livremente a história do personagem..."
+                          value={history}
+                          onChange={(e) => setHistory(e.target.value)}
+                          className="font-body min-h-[110px] resize-none"
                         />
                       </div>
                     </div>
@@ -988,12 +1259,13 @@ const RpgSheetDashboard = () => {
                 <Button
                   variant="ghost"
                   className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 font-body"
+                  onClick={handleDiscard}
                 >
                   <Trash2 className="w-4 h-4" />
                   Discard
                 </Button>
                 <div className="flex gap-3">
-                  <Button variant="outline" className="gap-1.5 font-body">
+                  <Button variant="outline" className="gap-1.5 font-body" onClick={handleSaveDraft}>
                     <FileText className="w-4 h-4" />
                     Save Draft
                   </Button>

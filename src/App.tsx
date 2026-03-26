@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LocaleProvider } from "@/i18n/locale";
+import { RegionalFormatProvider } from "@/i18n/regionalFormat";
 import { AuthProvider } from "@/auth/AuthProvider";
 import Header from "@/components/Header";
 import Index from "./pages/Index";
@@ -44,13 +45,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <LocaleProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppLayout />
-          </BrowserRouter>
-        </TooltipProvider>
+        <RegionalFormatProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppLayout />
+            </BrowserRouter>
+          </TooltipProvider>
+        </RegionalFormatProvider>
       </LocaleProvider>
     </AuthProvider>
   </QueryClientProvider>

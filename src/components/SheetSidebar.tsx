@@ -1,21 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import {
-  BookOpen,
-  Library,
-  Sparkles,
-  Users,
-  Lock,
-  Settings,
-  HelpCircle,
-  LogOut,
-  Wand2,
-} from "lucide-react";
+import { BookOpen, Library, HelpCircle, LogOut, Wand2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -28,17 +17,24 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 
 const mainNav = [
-  { title: "Library", url: "/catalog", icon: Library },
-  { title: "Active Spells", url: "#", icon: Sparkles },
-  { title: "Party Chat", url: "#", icon: Users },
-  { title: "The Vault", url: "#", icon: Lock },
-  { title: "Settings", url: "#", icon: Settings },
+  { title: "Biblioteca", url: "/catalog", icon: Library },
 ];
 
 const SheetSidebar = () => {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+
+  const currentType = (() => {
+    const sp = new URLSearchParams(location.search);
+    const type = (sp.get("type") ?? "").toUpperCase();
+    if (type === "RPG" || type === "STORY") return type as "RPG" | "STORY";
+    return null;
+  })();
+
+  const targetType = currentType === "RPG" ? "STORY" : "RPG";
+  const buttonVariant = targetType === "RPG" ? "rpg" : "story";
+  const buttonTo = `/sheets/new?type=${targetType}`;
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -49,14 +45,14 @@ const SheetSidebar = () => {
           </div>
           {!collapsed && (
             <span className="font-display text-sm tracking-wider text-sidebar-foreground">
-              Grimoire
+              GRIMOIRE
             </span>
           )}
         </Link>
       </SidebarHeader>
 
       <SidebarContent>
-        {/* User Profile */}
+        {/* Cabeçalho (padrão) */}
         {!collapsed && (
           <div className="px-4 py-3">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent">
@@ -69,8 +65,8 @@ const SheetSidebar = () => {
                 <p className="text-sm font-heading text-sidebar-foreground truncate">
                   Ordem dos Arcanos
                 </p>
-                <p className="text-xs text-muted-foreground font-body truncate">
-                  Grand Archive Master
+                <p className="text-[11px] text-muted-foreground font-body truncate">
+                  Grande Mestre do Arquivo
                 </p>
               </div>
             </div>
@@ -78,23 +74,21 @@ const SheetSidebar = () => {
         )}
 
         <SidebarGroup>
-          <SidebarGroupLabel className="font-heading text-xs tracking-wider text-muted-foreground uppercase">
-            Menu
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNav.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link
-                      to={item.url}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-body transition-colors ${
-                        location.pathname === item.url
-                          ? "bg-sidebar-accent text-primary"
-                          : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4" />
+                  <SidebarMenuButton
+                    asChild
+                    size={collapsed ? "default" : "lg"}
+                    className={
+                      !collapsed
+                        ? "mx-4 mt-1 border-l-4 border-primary bg-transparent text-primary font-heading tracking-wide hover:bg-sidebar-accent hover:text-primary"
+                        : ""
+                    }
+                  >
+                    <Link to={item.url}>
+                      <item.icon />
                       {!collapsed && <span>{item.title}</span>}
                     </Link>
                   </SidebarMenuButton>
@@ -106,10 +100,10 @@ const SheetSidebar = () => {
 
         {!collapsed && (
           <div className="px-4 mt-4">
-            <Button variant="rpg" size="lg" className="w-full gap-2" asChild>
-              <Link to="/sheets/new?type=RPG">
+            <Button variant={buttonVariant} size="lg" className="w-full gap-2" asChild>
+              <Link to={buttonTo}>
                 <Wand2 className="w-4 h-4" />
-                Summon New Ally
+                Girar a Moeda
               </Link>
             </Button>
           </div>

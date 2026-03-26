@@ -61,3 +61,19 @@ export async function saveMySheet(params: {
   if (error) throw error;
   return inserted.id;
 }
+
+export async function fetchMySheet(id: string): Promise<SheetRow> {
+  const { data } = await supabase.auth.getSession();
+  const user = data.session?.user;
+  if (!user) throw new Error("Sem sessão");
+
+  const { data: row, error } = await supabase
+    .from("character_sheets")
+    .select("id,title,type,updated_at,created_at,data")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (error) throw error;
+  return row as SheetRow;
+}

@@ -42,7 +42,8 @@ import SheetSidebar from "@/components/SheetSidebar";
 import { useLocale } from "@/i18n/locale";
 import { exportRpgSheetPdf, exportStorySheetPdf } from "@/lib/pdf/sheetPdf";
 import { toast } from "@/hooks/use-toast";
-import { saveMySheet } from "@/data/sheets";
+import { fetchMySheet, saveMySheet } from "@/data/sheets";
+import { useAuth } from "@/auth/AuthProvider";
 
 /* ─── Types ─── */
 interface Attribute {
@@ -100,6 +101,33 @@ const TEMPLATES: Record<string, { label: string; value: string }[]> = {
 
 let nextId = 1;
 const uid = () => String(nextId++);
+
+const saveLocalDraft = (key: string, payload: unknown) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify({ v: 1, savedAt: Date.now(), payload }));
+  } catch {
+    // ignore
+  }
+};
+
+const loadLocalDraft = (key: string): any | null => {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as any;
+    return parsed?.payload ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const clearLocalDraft = (key: string) => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+};
 
 /* ─── Component ─── */
 const NewSheet = () => {
@@ -159,6 +187,11 @@ const AGE_RANGES = ["Jovem", "Adulto", "Ancião", "Imortal"] as const;
 /* ─── Story Dashboard ─── */
 const StorySheetDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("id");
+
+  const LOCAL_DRAFT_KEY = "chronicleForge.localDraft.story.v1";
 
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -178,6 +211,88 @@ const StorySheetDashboard = () => {
   const [relations, setRelations] = useState("");
 
   useEffect(() => {
+    if (editId) return;
+    const d = loadLocalDraft(LOCAL_DRAFT_KEY);
+    if (!d) return;
+
+    setName(String(d.name ?? ""));
+    setCodename(String(d.codename ?? ""));
+    setAgeRange(String(d.ageRange ?? ""));
+    setPersonalities(Array.isArray(d.personalities) ? d.personalities.map(String).filter(Boolean) : []);
+    setAbility(String(d.ability ?? ""));
+    setStoryRole(String(d.storyRole ?? ""));
+    setArchetype(String(d.archetype ?? "HERO"));
+    setMotivation(String(d.motivation ?? ""));
+    setRelations(String(d.relations ?? ""));
+  }, [editId]);
+
+  useEffect(() => {
+    if (editId) return;
+    if (user) return;
+    const t = window.setTimeout(() => {
+      saveLocalDraft(LOCAL_DRAFT_KEY, {
+        name,
+        codename,
+        ageRange,
+        personalities,
+        ability,
+        storyRole,
+        archetype,
+        motivation,
+        relations,
+      });
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [
+    editId,
+    user,
+    name,
+    codename,
+    ageRange,
+    personalities,
+    ability,
+    storyRole,
+    archetype,
+    motivation,
+    relations,
+  ]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!editId) return;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    fetchMySheet(editId)
+      .then((row) => {
+        if (!mounted) return;
+        if (row.type !== "STORY") return;
+
+        setSheetId(row.id);
+
+        const d = (row.data ?? {}) as any;
+        setName(String(d.name ?? ""));
+        setCodename(String(d.codename ?? ""));
+        setAgeRange(String(d.ageRange ?? ""));
+        setPersonalities(Array.isArray(d.personalities) ? d.personalities.map(String).filter(Boolean) : []);
+        setAbility(String(d.ability ?? ""));
+        setStoryRole(String(d.storyRole ?? ""));
+        setArchetype(String(d.archetype ?? "HERO"));
+        setMotivation(String(d.motivation ?? ""));
+        setRelations(String(d.relations ?? ""));
+      })
+      .catch(() => {
+        toast({ variant: "destructive", title: "Falha", description: "Não foi possível carregar a ficha para edição." });
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [editId, navigate, user]);
+
+  useEffect(() => {
     return () => {
       if (avatarUrl) URL.revokeObjectURL(avatarUrl);
     };
@@ -195,6 +310,21 @@ const StorySheetDashboard = () => {
 
   const handleExportPdf = async () => {
     if (isExportingPdf) return;
+    if (!user) {
+      saveLocalDraft(LOCAL_DRAFT_KEY, {
+        name,
+        codename,
+        ageRange,
+        personalities,
+        ability,
+        storyRole,
+        archetype,
+        motivation,
+        relations,
+      });
+      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      return;
+    }
     try {
       setIsExportingPdf(true);
 
@@ -233,6 +363,7 @@ const StorySheetDashboard = () => {
         relations,
         avatarFile,
       });
+      clearLocalDraft(LOCAL_DRAFT_KEY);
       toast({ title: "PDF gerado", description: "A ficha foi baixada em formato PDF." });
     } catch {
       toast({ variant: "destructive", title: "Falha ao gerar PDF", description: "Tente novamente." });
@@ -242,6 +373,21 @@ const StorySheetDashboard = () => {
   };
 
   const handleSaveDraft = async () => {
+    if (!user) {
+      saveLocalDraft(LOCAL_DRAFT_KEY, {
+        name,
+        codename,
+        ageRange,
+        personalities,
+        ability,
+        storyRole,
+        archetype,
+        motivation,
+        relations,
+      });
+      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      return;
+    }
     try {
       const id = await saveMySheet({
         id: sheetId,
@@ -260,7 +406,9 @@ const StorySheetDashboard = () => {
         },
       });
       setSheetId(id);
+      clearLocalDraft(LOCAL_DRAFT_KEY);
       toast({ title: "Rascunho salvo", description: "A ficha foi salva na biblioteca." });
+      navigate("/catalog?filter=story#biblioteca");
     } catch {
       toast({ variant: "destructive", title: "Não foi possível salvar", description: "Faça login para salvar na biblioteca." });
     }
@@ -268,6 +416,7 @@ const StorySheetDashboard = () => {
 
   const handleDiscard = () => {
     setSheetId(null);
+    clearLocalDraft(LOCAL_DRAFT_KEY);
 
     if (avatarUrl) URL.revokeObjectURL(avatarUrl);
     setAvatarUrl(null);
@@ -329,7 +478,7 @@ const StorySheetDashboard = () => {
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <Separator orientation="vertical" className="h-6" />
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => navigate("/")}
                 className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm font-body transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" /> Voltar
@@ -606,6 +755,11 @@ const StorySheetDashboard = () => {
 /* ─── RPG Dashboard ─── */
 const RpgSheetDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("id");
+
+  const LOCAL_DRAFT_KEY = "chronicleForge.localDraft.rpg.v1";
 
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -642,6 +796,166 @@ const RpgSheetDashboard = () => {
   ]);
 
   useEffect(() => {
+    if (editId) return;
+    const d = loadLocalDraft(LOCAL_DRAFT_KEY);
+    if (!d) return;
+
+    setName(String(d.name ?? ""));
+    setSystem(String(d.system ?? "D&D 5e"));
+    setNotes(String(d.notes ?? ""));
+
+    setHp(String(d.hp ?? ""));
+    setMp(String(d.mp ?? ""));
+    setGold(String(d.gold ?? ""));
+    setRace(String(d.race ?? ""));
+    setCharacterClass(String(d.characterClass ?? ""));
+    setStatusBonus(String(d.statusBonus ?? ""));
+    setHistory(String(d.history ?? ""));
+
+    if (Array.isArray(d.attributes)) {
+      setAttributes(
+        d.attributes.map((a: any) => ({
+          id: String(a?.id ?? uid()),
+          label: String(a?.label ?? ""),
+          value: String(a?.value ?? ""),
+        }))
+      );
+    }
+
+    if (Array.isArray(d.skills)) {
+      setSkills(
+        d.skills.map((s: any) => ({
+          id: String(s?.id ?? uid()),
+          name: String(s?.name ?? ""),
+          description: String(s?.description ?? ""),
+        }))
+      );
+    }
+
+    if (Array.isArray(d.inventory)) {
+      setInventory(
+        d.inventory.map((i: any) => ({
+          id: String(i?.id ?? uid()),
+          name: String(i?.name ?? ""),
+          quantity: Number(i?.quantity ?? 0),
+          weight: String(i?.weight ?? ""),
+          notes: String(i?.notes ?? ""),
+          equipped: Boolean(i?.equipped ?? false),
+        }))
+      );
+    }
+  }, [editId]);
+
+  useEffect(() => {
+    if (editId) return;
+    if (user) return;
+    const t = window.setTimeout(() => {
+      saveLocalDraft(LOCAL_DRAFT_KEY, {
+        name,
+        system,
+        notes,
+        hp,
+        mp,
+        gold,
+        race,
+        characterClass,
+        statusBonus,
+        history,
+        attributes,
+        skills,
+        inventory,
+      });
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [
+    editId,
+    user,
+    name,
+    system,
+    notes,
+    hp,
+    mp,
+    gold,
+    race,
+    characterClass,
+    statusBonus,
+    history,
+    attributes,
+    skills,
+    inventory,
+  ]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!editId) return;
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    fetchMySheet(editId)
+      .then((row) => {
+        if (!mounted) return;
+        if (row.type !== "RPG") return;
+
+        setSheetId(row.id);
+
+        const d = (row.data ?? {}) as any;
+        setName(String(d.name ?? ""));
+        setSystem(String(d.system ?? "D&D 5e"));
+        setNotes(String(d.notes ?? ""));
+        setHp(String(d.hp ?? ""));
+        setMp(String(d.mp ?? ""));
+        setGold(String(d.gold ?? ""));
+        setRace(String(d.race ?? ""));
+        setCharacterClass(String(d.characterClass ?? ""));
+        setStatusBonus(String(d.statusBonus ?? ""));
+        setHistory(String(d.history ?? ""));
+
+        if (Array.isArray(d.attributes)) {
+          setAttributes(
+            d.attributes
+              .map((a: any) => ({
+                id: String(a?.id ?? uid()),
+                label: String(a?.label ?? ""),
+                value: String(a?.value ?? ""),
+              }))
+          );
+        }
+
+        if (Array.isArray(d.skills)) {
+          setSkills(
+            d.skills.map((s: any) => ({
+              id: String(s?.id ?? uid()),
+              name: String(s?.name ?? ""),
+              description: String(s?.description ?? ""),
+            }))
+          );
+        }
+
+        if (Array.isArray(d.inventory)) {
+          setInventory(
+            d.inventory.map((i: any) => ({
+              id: String(i?.id ?? uid()),
+              name: String(i?.name ?? ""),
+              quantity: Number(i?.quantity ?? 0),
+              weight: String(i?.weight ?? ""),
+              notes: String(i?.notes ?? ""),
+              equipped: Boolean(i?.equipped ?? false),
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        toast({ variant: "destructive", title: "Falha", description: "Não foi possível carregar a ficha para edição." });
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [editId, navigate, user]);
+
+  useEffect(() => {
     return () => {
       if (avatarUrl) URL.revokeObjectURL(avatarUrl);
     };
@@ -659,6 +973,25 @@ const RpgSheetDashboard = () => {
 
   const handleExportPdf = async () => {
     if (isExportingPdf) return;
+    if (!user) {
+      saveLocalDraft(LOCAL_DRAFT_KEY, {
+        name,
+        system,
+        notes,
+        hp,
+        mp,
+        gold,
+        race,
+        characterClass,
+        statusBonus,
+        history,
+        attributes,
+        skills,
+        inventory,
+      });
+      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      return;
+    }
     try {
       setIsExportingPdf(true);
 
@@ -711,6 +1044,7 @@ const RpgSheetDashboard = () => {
         })),
         avatarFile,
       });
+      clearLocalDraft(LOCAL_DRAFT_KEY);
       toast({ title: "PDF gerado", description: "A ficha foi baixada em formato PDF." });
     } catch {
       toast({ variant: "destructive", title: "Falha ao gerar PDF", description: "Tente novamente." });
@@ -720,6 +1054,25 @@ const RpgSheetDashboard = () => {
   };
 
   const handleSaveDraft = async () => {
+    if (!user) {
+      saveLocalDraft(LOCAL_DRAFT_KEY, {
+        name,
+        system,
+        notes,
+        hp,
+        mp,
+        gold,
+        race,
+        characterClass,
+        statusBonus,
+        history,
+        attributes,
+        skills,
+        inventory,
+      });
+      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      return;
+    }
     try {
       const id = await saveMySheet({
         id: sheetId,
@@ -742,7 +1095,9 @@ const RpgSheetDashboard = () => {
         },
       });
       setSheetId(id);
+      clearLocalDraft(LOCAL_DRAFT_KEY);
       toast({ title: "Rascunho salvo", description: "A ficha foi salva na biblioteca." });
+      navigate("/catalog?filter=rpg#biblioteca");
     } catch {
       toast({ variant: "destructive", title: "Não foi possível salvar", description: "Faça login para salvar na biblioteca." });
     }
@@ -750,6 +1105,7 @@ const RpgSheetDashboard = () => {
 
   const handleDiscard = () => {
     setSheetId(null);
+    clearLocalDraft(LOCAL_DRAFT_KEY);
 
     if (avatarUrl) URL.revokeObjectURL(avatarUrl);
     setAvatarUrl(null);
@@ -813,7 +1169,7 @@ const RpgSheetDashboard = () => {
               <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
               <Separator orientation="vertical" className="h-6" />
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => navigate("/")}
                 className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm font-body transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" /> Voltar

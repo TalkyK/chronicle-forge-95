@@ -34,6 +34,8 @@ const Login = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
 
+  const redirectTarget = searchParams.get("redirect");
+
   const tabFromQuery = (): LoginTab => {
     const raw = (searchParams.get("tab") ?? "").toLowerCase();
     if (raw === "register" || raw === "cadastro") return "register";
@@ -204,7 +206,7 @@ const Login = () => {
                   signInWithPassword({ email, password })
                     .then(() => {
                       toast({ title: "Bem-vindo!", description: "Login realizado com sucesso." });
-                      navigate("/catalog");
+                      navigate(redirectTarget || "/catalog");
                     })
                     .catch((err: unknown) => {
                       const message =
@@ -241,7 +243,7 @@ const Login = () => {
                           });
                         }
                         toast({ title: "Conta criada", description: "Bem-vindo!" });
-                        navigate("/catalog");
+                        navigate(redirectTarget || "/catalog");
                         return;
                       }
 
@@ -284,7 +286,7 @@ const Login = () => {
                 ])
                   .then(() => {
                     toast({ title: "Cadastro concluído", description: "Conta configurada com sucesso." });
-                    navigate("/catalog");
+                    navigate(redirectTarget || "/catalog");
                   })
                   .catch((err: unknown) => {
                     const message =
@@ -395,7 +397,7 @@ const Login = () => {
                       const { data, error } = await supabase.auth.signInWithOAuth({
                         provider: "google",
                         options: {
-                          redirectTo: `${window.location.origin}/login?tab=complete`,
+                          redirectTo: `${window.location.origin}/login?tab=complete${redirectTarget ? `&redirect=${encodeURIComponent(redirectTarget)}` : ""}`,
                           skipBrowserRedirect: true,
                         },
                       });

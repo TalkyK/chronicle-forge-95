@@ -1,9 +1,9 @@
 import {
   BookOpen,
   Plus,
-  Settings,
   Sparkles,
-  Users,
+  Pencil,
+  Download,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useLocale } from "@/i18n/locale";
@@ -12,22 +12,27 @@ import { useAuth } from "@/auth/AuthProvider";
 import { fetchMyProfile } from "@/data/profiles";
 import { listMySheets } from "@/data/sheets";
 import type { SheetRow } from "@/data/sheets";
+import { useRegionalFormat } from "@/i18n/regionalFormat";
+import { exportRpgSheetPdf, exportStorySheetPdf } from "@/lib/pdf/sheetPdf";
+import { toast } from "@/hooks/use-toast";
 
-type SheetFilter = "ALL" | "RPG" | "STORY";
+type SheetFilter = "RPG" | "STORY";
 
 const Catalog = () => {
   const { t } = useLocale();
   const { user } = useAuth();
+  const { formatDate } = useRegionalFormat();
   const [searchParams, setSearchParams] = useSearchParams();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [sheets, setSheets] = useState<SheetRow[]>([]);
   const [loadingSheets, setLoadingSheets] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
   const filterFromQuery = (): SheetFilter => {
     const f = (searchParams.get("filter") ?? "").toLowerCase();
     if (f === "rpg") return "RPG";
     if (f === "story" || f === "personagem" || f === "personagens") return "STORY";
-    return "ALL";
+    return "RPG";
   };
 
   const [activeFilter, setActiveFilter] = useState<SheetFilter>(filterFromQuery);
@@ -87,16 +92,39 @@ const Catalog = () => {
   const setFilter = (next: SheetFilter) => {
     setActiveFilter(next);
     const sp = new URLSearchParams(searchParams);
-    if (next === "ALL") sp.delete("filter");
     if (next === "RPG") sp.set("filter", "rpg");
     if (next === "STORY") sp.set("filter", "story");
     setSearchParams(sp, { replace: true });
   };
 
-  const filteredSheets = sheets.filter((s) => {
-    if (activeFilter === "ALL") return true;
-    return s.type === activeFilter;
-  });
+  const filteredSheets = sheets
+    .filter((s) => s.type === activeFilter)
+    .filter((s) => {
+      const q = searchText.trim().toLowerCase();
+      if (!q) return true;
+
+      const safeData = (() => {
+        try {
+          return JSON.stringify(s.data ?? {});
+        } catch {
+          return "";
+        }
+      })();
+
+      const haystack = [
+        s.title ?? "",
+        s.type,
+        s.updated_at ?? "",
+        formatDate(s.updated_at),
+        s.created_at ?? "",
+        s.created_at ? formatDate(s.created_at) : "",
+        safeData,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return q.split(/\s+/).every((term) => haystack.includes(term));
+    });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -160,31 +188,11 @@ const Catalog = () => {
 
           <nav className="space-y-1">
             <Link
-              to="/catalog#fichas"
-              onClick={() => setFilter("ALL")}
-              className={
-                "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 " +
-                (activeFilter === "ALL"
-                  ? "bg-gradient-to-r from-primary/20 to-transparent border-l-4 border-accent text-accent font-bold"
-                  : "text-foreground/50 hover:text-foreground hover:bg-background/40 hover:translate-x-1")
-              }
+              to="/catalog#biblioteca"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 bg-gradient-to-r from-primary/20 to-transparent border-l-4 border-accent text-accent font-bold"
             >
               <BookOpen className="w-5 h-5" />
               <span className="text-sm font-mono uppercase tracking-widest">Biblioteca</span>
-            </Link>
-            <Link
-              to="/catalog#fichas"
-              className="w-full flex items-center gap-3 text-foreground/50 hover:text-foreground hover:bg-background/40 hover:translate-x-1 px-4 py-3 rounded-lg transition-all duration-300"
-            >
-              <Sparkles className="w-5 h-5" />
-              <span className="text-sm font-mono uppercase tracking-widest">Magias Ativas</span>
-            </Link>
-            <Link
-              to="/catalog#chat"
-              className="w-full flex items-center gap-3 text-foreground/50 hover:text-foreground hover:bg-background/40 hover:translate-x-1 px-4 py-3 rounded-lg transition-all duration-300"
-            >
-              <Users className="w-5 h-5" />
-              <span className="text-sm font-mono uppercase tracking-widest">Chat do Grupo</span>
             </Link>
           </nav>
         </div>
@@ -211,41 +219,24 @@ const Catalog = () => {
               {t("catalog.heroDescription")}
             </p>
           </div>
-          <button
-            type="button"
+          <Link
+            to={`/sheets/new?type=${activeFilter}`}
             className="astral-gradient group relative flex items-center gap-3 px-8 py-4 rounded-full text-primary-foreground font-mono uppercase tracking-widest text-sm hover:scale-105 transition-transform duration-300 shadow-[0_10px_30px_hsl(var(--primary)/0.3)]"
+            aria-label={t("catalog.newSheet")}
           >
             <Plus className="w-5 h-5" />
             {t("catalog.newSheet")}
-          </button>
+          </Link>
         </header>
 
         {/* Sub Navigation & Mode Selector */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12 border-b border-border/50 pb-4">
           <div className="flex gap-8 overflow-x-auto w-full md:w-auto no-scrollbar">
             <Link
-              to="/catalog#fichas"
+              to="/catalog#biblioteca"
               className="flex items-center gap-2 text-accent font-display text-xl border-b-2 border-accent pb-3 whitespace-nowrap"
             >
               <span>📜</span> {t("catalog.tabs.sheets")}
-            </Link>
-            <Link
-              to="/catalog#membros"
-              className="flex items-center gap-2 text-foreground/60 hover:text-foreground font-display text-xl pb-3 whitespace-nowrap transition-colors"
-            >
-              <span>👥</span> {t("catalog.tabs.members")}
-            </Link>
-            <Link
-              to="/catalog#chat"
-              className="flex items-center gap-2 text-foreground/60 hover:text-foreground font-display text-xl pb-3 whitespace-nowrap transition-colors"
-            >
-              <span>💬</span> {t("catalog.tabs.chat")}
-            </Link>
-            <Link
-              to="/settings"
-              className="flex items-center gap-2 text-foreground/60 hover:text-foreground font-display text-xl pb-3 whitespace-nowrap transition-colors"
-            >
-              <span>⚙️</span> {t("catalog.tabs.settings")}
             </Link>
           </div>
 
@@ -278,42 +269,156 @@ const Catalog = () => {
           </div>
         </div>
 
-        {/* Section: Fichas (Bento Grid) */}
-          <section id="fichas" className="mb-20">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {!user && (
-                <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
-                  Faça login para ver suas fichas salvas.
-                </div>
-              )}
+        {/* Section: Biblioteca */}
+        <section id="biblioteca" className="mb-20">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+            <div>
+              <h2 className="text-3xl font-display italic">Biblioteca</h2>
+              <p className="text-muted-foreground font-body mt-1">
+                Pesquise por nome, data, tipo e palavras da lore.
+              </p>
+            </div>
+            <div className="w-full md:w-[420px]">
+              <input
+                className="w-full rounded-xl border border-border/50 bg-secondary/40 px-4 py-3 text-sm text-foreground placeholder:text-foreground/30 outline-none focus:border-accent/60"
+                placeholder="Pesquisar (nome, data, tag, lore...)"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                disabled={!user}
+              />
+            </div>
+          </div>
 
-              {user && loadingSheets && (
-                <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
-                  Carregando fichas...
-                </div>
-              )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {!user && (
+              <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
+                Faça login para ver e pesquisar suas fichas salvas.
+              </div>
+            )}
 
-              {user && !loadingSheets && filteredSheets.length === 0 && (
-                <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
-                  Nenhuma ficha encontrada para este filtro.
-                </div>
-              )}
+            {user && loadingSheets && (
+              <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
+                Carregando fichas...
+              </div>
+            )}
 
-              {user && !loadingSheets &&
-                filteredSheets.map((sheet) => (
-                  <div
-                    key={sheet.id}
-                    className="rounded-xl border border-border/50 bg-secondary/40 p-6 hover:bg-secondary/60 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="font-display italic text-xl text-foreground truncate">
-                          {sheet.title}
-                        </div>
-                        <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-foreground/40">
-                          Atualizado: {new Date(sheet.updated_at).toLocaleDateString("pt-BR")}
-                        </div>
+            {user && !loadingSheets && filteredSheets.length === 0 && (
+              <div className="col-span-full rounded-xl border border-border/50 bg-secondary/40 p-6 text-muted-foreground font-body">
+                Nenhuma ficha encontrada para esta pesquisa.
+              </div>
+            )}
+
+            {user && !loadingSheets &&
+              filteredSheets.map((sheet) => (
+                <div
+                  key={sheet.id}
+                  className="rounded-xl border border-border/50 bg-secondary/40 p-6 hover:bg-secondary/60 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-display italic text-xl text-foreground truncate">
+                        {sheet.title}
                       </div>
+                      <div className="mt-1 font-mono text-[10px] uppercase tracking-widest text-foreground/40">
+                        Atualizado: {formatDate(sheet.updated_at)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/sheets/new?type=${sheet.type}&id=${sheet.id}`}
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border/50 bg-background/20 text-foreground/70 hover:text-foreground hover:bg-background/30 transition-colors"
+                        aria-label="Editar ficha"
+                        title="Editar"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Link>
+
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border/50 bg-background/20 text-foreground/70 hover:text-foreground hover:bg-background/30 transition-colors"
+                        aria-label="Baixar PDF"
+                        title="Baixar PDF"
+                        onClick={() => {
+                          try {
+                            const d = (sheet.data ?? {}) as any;
+                            if (sheet.type === "STORY") {
+                              exportStorySheetPdf({
+                                title: sheet.title,
+                                name: String(d.name ?? ""),
+                                codename: String(d.codename ?? ""),
+                                ageRange: String(d.ageRange ?? ""),
+                                personalities: Array.isArray(d.personalities)
+                                  ? d.personalities.map(String).filter(Boolean)
+                                  : [],
+                                ability: String(d.ability ?? ""),
+                                storyRole: String(d.storyRole ?? ""),
+                                archetype: String(d.archetype ?? ""),
+                                motivation: String(d.motivation ?? ""),
+                                relations: String(d.relations ?? ""),
+                                avatarFile: null,
+                              }).catch(() => {
+                                toast({
+                                  variant: "destructive",
+                                  title: "Falha",
+                                  description: "Não foi possível gerar o PDF.",
+                                });
+                              });
+                              return;
+                            }
+
+                            exportRpgSheetPdf({
+                              title: sheet.title,
+                              name: String(d.name ?? ""),
+                              system: String(d.system ?? ""),
+                              notes: String(d.notes ?? ""),
+                              hp: String(d.hp ?? ""),
+                              mp: String(d.mp ?? ""),
+                              gold: String(d.gold ?? ""),
+                              history: String(d.history ?? ""),
+                              statusBonus: String(d.statusBonus ?? ""),
+                              race: String(d.race ?? ""),
+                              characterClass: String(d.characterClass ?? ""),
+                              attributes: Array.isArray(d.attributes)
+                                ? d.attributes.map((a: any) => ({
+                                    label: String(a?.label ?? ""),
+                                    value: String(a?.value ?? ""),
+                                  }))
+                                : [],
+                              skills: Array.isArray(d.skills)
+                                ? d.skills.map((s: any) => ({
+                                    name: String(s?.name ?? ""),
+                                    description: String(s?.description ?? ""),
+                                  }))
+                                : [],
+                              inventory: Array.isArray(d.inventory)
+                                ? d.inventory.map((i: any) => ({
+                                    name: String(i?.name ?? ""),
+                                    quantity: Number(i?.quantity ?? 0),
+                                    weight: String(i?.weight ?? ""),
+                                    notes: String(i?.notes ?? ""),
+                                    equipped: Boolean(i?.equipped ?? false),
+                                  }))
+                                : [],
+                              avatarFile: null,
+                            }).catch(() => {
+                              toast({
+                                variant: "destructive",
+                                title: "Falha",
+                                description: "Não foi possível gerar o PDF.",
+                              });
+                            });
+                          } catch {
+                            toast({
+                              variant: "destructive",
+                              title: "Falha",
+                              description: "Não foi possível gerar o PDF.",
+                            });
+                          }
+                        }}
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+
                       <span
                         className={
                           "inline-flex font-mono text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border " +
@@ -325,49 +430,17 @@ const Catalog = () => {
                         {sheet.type === "RPG" ? "RPG" : "História"}
                       </span>
                     </div>
-
-                    <div className="mt-4 text-sm text-muted-foreground font-body line-clamp-3">
-                      {(sheet.type === "RPG"
-                        ? (sheet.data as any)?.notes
-                        : (sheet.data as any)?.motivation) ||
-                        "—"}
-                    </div>
                   </div>
-                ))}
-            </div>
-          </section>
 
-        {/* Section: Membros (List View) */}
-        <section id="membros" className="mb-20">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-display italic">{t("catalog.membersTitle")}</h2>
-            <span className="font-mono text-xs uppercase tracking-widest text-foreground/40">
-              {t("catalog.membersCount")}
-            </span>
+                  <div className="mt-4 text-sm text-muted-foreground font-body line-clamp-3">
+                    {(sheet.type === "RPG"
+                      ? (sheet.data as any)?.notes
+                      : (sheet.data as any)?.motivation) ||
+                      "—"}
+                  </div>
+                </div>
+              ))}
           </div>
-          <div className="space-y-4" />
-        </section>
-
-        <section id="chat" className="mb-20">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-display italic">Chat</h2>
-            <span className="font-mono text-xs uppercase tracking-widest text-foreground/40">Em breve</span>
-          </div>
-          <div className="h-24 rounded-xl border border-border/50 bg-secondary/40" />
-        </section>
-
-        <section id="configuracoes" className="mb-20">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-display italic">Configurações</h2>
-          </div>
-          <div className="h-24 rounded-xl border border-border/50 bg-secondary/40" />
-        </section>
-
-        <section id="biblioteca" className="mb-20">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-display italic">Biblioteca</h2>
-          </div>
-          <div className="h-24 rounded-xl border border-border/50 bg-secondary/40" />
         </section>
       </main>
 
@@ -377,20 +450,12 @@ const Catalog = () => {
           <Sparkles className="w-5 h-5" />
           <span className="text-[10px] font-mono uppercase">Biblioteca</span>
         </Link>
-        <Link to="/catalog#chat" className="flex flex-col items-center gap-1 text-foreground/40">
-          <Users className="w-5 h-5" />
-          <span className="text-[10px] font-mono uppercase">{t("catalog.tabs.chat")}</span>
-        </Link>
         <Link
           to="/sheets/new"
           className="astral-gradient w-12 h-12 rounded-full flex items-center justify-center -mt-10 shadow-lg"
           aria-label={t("catalog.newSheet")}
         >
           <Plus className="w-5 h-5 text-primary-foreground" />
-        </Link>
-        <Link to="/settings" className="flex flex-col items-center gap-1 text-foreground/40">
-          <Settings className="w-5 h-5" />
-          <span className="text-[10px] font-mono uppercase">{t("catalog.tabs.settingsShort")}</span>
         </Link>
       </nav>
     </div>

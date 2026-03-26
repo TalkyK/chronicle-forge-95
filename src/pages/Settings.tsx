@@ -6,6 +6,7 @@ import { useLocale } from "@/i18n/locale";
 import type { Locale, MessageKey } from "@/i18n/messages";
 import { fetchMyProfile, updateMyProfile, uploadMyAvatar, upsertMyProfileLocale } from "@/data/profiles";
 import { useAuth } from "@/auth/AuthProvider";
+import { DEFAULT_REGIONAL_FORMAT, type DateFormatId, type TimeZoneId, useRegionalFormat } from "@/i18n/regionalFormat";
 
 type PanelId = "idioma" | "conta" | "privacidade" | "notificacoes" | "seguranca";
 
@@ -31,11 +32,15 @@ const languageOptions: LanguageOption[] = [
 const Settings = () => {
   const { locale, setLocale, t } = useLocale();
   const { user } = useAuth();
+  const { settings: regionalSettings, setSettings: setRegionalSettings, reset: resetRegionalSettings } = useRegionalFormat();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<PanelId>("idioma");
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageId>(locale);
   const [showNotif, setShowNotif] = useState(false);
+
+  const [draftDateFormat, setDraftDateFormat] = useState<DateFormatId>(regionalSettings.dateFormat);
+  const [draftTimeZone, setDraftTimeZone] = useState<TimeZoneId>(regionalSettings.timeZone);
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
@@ -90,6 +95,11 @@ const Settings = () => {
   useEffect(() => {
     setSelectedLanguage(locale);
   }, [locale]);
+
+  useEffect(() => {
+    setDraftDateFormat(regionalSettings.dateFormat);
+    setDraftTimeZone(regionalSettings.timeZone);
+  }, [regionalSettings.dateFormat, regionalSettings.timeZone]);
 
   useEffect(() => {
     let mounted = true;
@@ -324,7 +334,8 @@ const Settings = () => {
                     </label>
                     <select
                       className="w-full bg-background border border-border/50 text-foreground px-3 py-2.5 rounded-sm outline-none focus:border-accent/60"
-                      defaultValue="br"
+                      value={draftDateFormat}
+                      onChange={(e) => setDraftDateFormat(e.target.value as DateFormatId)}
                     >
                       <option value="br">DD/MM/AAAA (Padrão BR)</option>
                       <option value="us">MM/DD/YYYY (US)</option>
@@ -337,7 +348,8 @@ const Settings = () => {
                     </label>
                     <select
                       className="w-full bg-background border border-border/50 text-foreground px-3 py-2.5 rounded-sm outline-none focus:border-accent/60"
-                      defaultValue="sp"
+                      value={draftTimeZone}
+                      onChange={(e) => setDraftTimeZone(e.target.value as TimeZoneId)}
                     >
                       <option value="sp">America/Sao_Paulo (UTC-3)</option>
                       <option value="manaus">America/Manaus (UTC-4)</option>
@@ -350,13 +362,26 @@ const Settings = () => {
                 <div className="flex gap-3 mt-6 flex-wrap">
                   <button
                     type="button"
-                    onClick={save}
+                    onClick={() => {
+                      setRegionalSettings({
+                        ...regionalSettings,
+                        dateFormat: draftDateFormat,
+                        timeZone: draftTimeZone,
+                      });
+                      save();
+                    }}
                     className="font-heading text-xs tracking-widest uppercase px-6 py-2.5 rounded-sm border border-accent/60 bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
                   >
                     Aplicar Formato
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      resetRegionalSettings();
+                      setDraftDateFormat(DEFAULT_REGIONAL_FORMAT.dateFormat);
+                      setDraftTimeZone(DEFAULT_REGIONAL_FORMAT.timeZone);
+                      save();
+                    }}
                     className="font-heading text-xs tracking-widest uppercase px-6 py-2.5 rounded-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
                   >
                     Restaurar Padrão

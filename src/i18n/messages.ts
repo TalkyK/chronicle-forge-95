@@ -8,6 +8,10 @@ export type MessageKey =
   | "newSheet.chooseType"
   | "newSheet.rpg"
   | "newSheet.story"
+  | "newSheet.action.saveDraft"
+  | "newSheet.action.saveSheet"
+  | "newSheet.action.saveCharacter"
+  | "newSheet.action.discard"
   | "nav.home"
   | "nav.grimoires"
   | "nav.arcaneOrder"
@@ -63,7 +67,7 @@ export type MessageKey =
   | "index.features.catalog.desc";
 
 const ptBR: Record<MessageKey, string> = {
-  "header.brand": "Fichas",
+  "header.brand": "Roll & Tale",
   "header.toggleTheme": "Alternar tema",
 
   "notFound.message": "Ops! Página não encontrada",
@@ -72,6 +76,10 @@ const ptBR: Record<MessageKey, string> = {
   "newSheet.chooseType": "Escolha o tipo de ficha",
   "newSheet.rpg": "Ficha de RPG",
   "newSheet.story": "Ficha de Personagem",
+  "newSheet.action.saveDraft": "Rascunho",
+  "newSheet.action.saveSheet": "Salvar Ficha",
+  "newSheet.action.saveCharacter": "Salvar Personagem",
+  "newSheet.action.discard": "Descartar",
 
   "nav.home": "Início",
   "nav.grimoires": "Grimórios",
@@ -134,7 +142,7 @@ const ptBR: Record<MessageKey, string> = {
 };
 
 const en: Partial<Record<MessageKey, string>> = {
-  "header.brand": "Sheets",
+  "header.brand": "Roll & Tale",
   "header.toggleTheme": "Toggle theme",
 
   "notFound.message": "Oops! Page not found",
@@ -143,6 +151,10 @@ const en: Partial<Record<MessageKey, string>> = {
   "newSheet.chooseType": "Choose the sheet type",
   "newSheet.rpg": "RPG Sheet",
   "newSheet.story": "Character Sheet",
+  "newSheet.action.saveDraft": "Save Draft",
+  "newSheet.action.saveSheet": "Save Sheet",
+  "newSheet.action.saveCharacter": "Save Character",
+  "newSheet.action.discard": "Discard",
 
   "nav.home": "Home",
   "nav.grimoires": "Grimoires",
@@ -204,7 +216,7 @@ const en: Partial<Record<MessageKey, string>> = {
 };
 
 const es: Partial<Record<MessageKey, string>> = {
-  "header.brand": "Fichas",
+  "header.brand": "Roll & Tale",
   "header.toggleTheme": "Cambiar tema",
 
   "notFound.message": "¡Ups! Página no encontrada",
@@ -213,6 +225,10 @@ const es: Partial<Record<MessageKey, string>> = {
   "newSheet.chooseType": "Elige el tipo de ficha",
   "newSheet.rpg": "Ficha de RPG",
   "newSheet.story": "Ficha de personaje",
+  "newSheet.action.saveDraft": "Guardar borrador",
+  "newSheet.action.saveSheet": "Guardar ficha",
+  "newSheet.action.saveCharacter": "Guardar personaje",
+  "newSheet.action.discard": "Descartar",
 
   "nav.home": "Inicio",
   "nav.grimoires": "Grimorios",

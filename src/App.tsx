@@ -12,6 +12,7 @@ import NewSheet from "./pages/NewSheet";
 import Catalog from "./pages/Catalog";
 import Login from "./pages/Login";
 import Settings from "./pages/Settings";
+import ArcaneOrder from "./pages/ArcaneOrder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const AppLayout = () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/sheets/new" element={<NewSheet />} />
         <Route path="/catalog" element={<Catalog />} />
+        <Route path="/arcane-order" element={<ArcaneOrder />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

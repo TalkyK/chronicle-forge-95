@@ -319,7 +319,7 @@ const Login = () => {
 
               <div className="space-y-1.5 group">
                 <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground ml-1">
-                  {tab === "complete" ? "E-mail" : t("login.username")}
+                  {tab === "complete" || tab === "register" ? "E-mail" : t("login.username")}
                 </label>
                 <div className="relative input-glow transition-all duration-300">
                   <input

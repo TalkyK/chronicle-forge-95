@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Dices,
   Feather,
+  HelpCircle,
   GripVertical,
   Plus,
   Trash2,
@@ -38,6 +39,14 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import SheetSidebar from "@/components/SheetSidebar";
 import { useLocale } from "@/i18n/locale";
 import { exportRpgSheetPdf, exportStorySheetPdf } from "@/lib/pdf/sheetPdf";
@@ -129,6 +138,64 @@ const clearLocalDraft = (key: string) => {
   }
 };
 
+const MiniTutorialDialog = ({ mode }: { mode: "RPG" | "STORY" }) => {
+  const isStory = mode === "STORY";
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" title="Ajuda rápida">
+          <HelpCircle className="w-4 h-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Mini tutorial</DialogTitle>
+          <DialogDescription>
+            {isStory
+              ? "Guia rápido para criar sua ficha narrativa sem travar."
+              : "Guia rápido para montar sua ficha de RPG com segurança."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 text-sm font-body">
+          <div className="rounded-lg border border-border p-3">
+            <p className="font-heading text-foreground">1. Comece pelo básico</p>
+            <p className="text-muted-foreground mt-1">
+              {isStory
+                ? "Preencha Nome, Codinome e Faixa Etária. Isso define a identidade do personagem."
+                : "Preencha Nome, Sistema e dados principais (raça/classe/HP/MP)."}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-border p-3">
+            <p className="font-heading text-foreground">2. Defina o núcleo</p>
+            <p className="text-muted-foreground mt-1">
+              {isStory
+                ? "Use Personalidade, Habilidade e Papel na Trama para guiar decisões e conflitos."
+                : "Configure atributos, perícias e inventário para refletir o estilo de jogo do personagem."}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-border p-3">
+            <p className="font-heading text-foreground">3. Salve sem medo</p>
+            <p className="text-muted-foreground mt-1">
+              Use Rascunho para salvar na biblioteca e continue depois. Para baixar PDF, basta clicar em Salvar.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-border p-3">
+            <p className="font-heading text-foreground">4. Se estiver perdido</p>
+            <p className="text-muted-foreground mt-1">
+              Preencha primeiro só os campos obrigatórios para avançar. Você pode voltar e melhorar o restante depois.
+            </p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 /* ─── Component ─── */
 const NewSheet = () => {
   const { t } = useLocale();
@@ -187,6 +254,7 @@ const AGE_RANGES = ["Jovem", "Adulto", "Ancião", "Imortal"] as const;
 /* ─── Story Dashboard ─── */
 const StorySheetDashboard = () => {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("id");
@@ -485,13 +553,14 @@ const StorySheetDashboard = () => {
               </button>
             </div>
             <div className="flex items-center gap-2">
+              <MiniTutorialDialog mode="STORY" />
               <Button variant="outline" size="sm" className="gap-1.5 font-body" onClick={handleSaveDraft}>
                 <FileText className="w-3.5 h-3.5" />
-                Rascunho
+                {t("newSheet.action.saveDraft")}
               </Button>
               <Button variant="story" size="sm" className="gap-1.5" onClick={handleExportPdf} disabled={isExportingPdf}>
                 <Save className="w-3.5 h-3.5" />
-                Salvar Personagem
+                {t("newSheet.action.saveCharacter")}
               </Button>
             </div>
           </header>
@@ -740,7 +809,7 @@ const StorySheetDashboard = () => {
                   </Button>
                   <Button variant="story" className="gap-1.5" onClick={handleExportPdf} disabled={isExportingPdf}>
                     <Save className="w-4 h-4" />
-                    Salvar Personagem
+                    {t("newSheet.action.saveCharacter")}
                   </Button>
                 </div>
               </div>
@@ -755,6 +824,7 @@ const StorySheetDashboard = () => {
 /* ─── RPG Dashboard ─── */
 const RpgSheetDashboard = () => {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("id");
@@ -1176,13 +1246,14 @@ const RpgSheetDashboard = () => {
               </button>
             </div>
             <div className="flex items-center gap-2">
+              <MiniTutorialDialog mode="RPG" />
               <Button variant="outline" size="sm" className="gap-1.5 font-body" onClick={handleSaveDraft}>
                 <FileText className="w-3.5 h-3.5" />
-                Save Draft
+                {t("newSheet.action.saveDraft")}
               </Button>
               <Button variant="rpg" size="sm" className="gap-1.5" onClick={handleExportPdf} disabled={isExportingPdf}>
                 <Save className="w-3.5 h-3.5" />
-                Save Sheet
+                {t("newSheet.action.saveSheet")}
               </Button>
             </div>
           </header>
@@ -1618,16 +1689,16 @@ const RpgSheetDashboard = () => {
                   onClick={handleDiscard}
                 >
                   <Trash2 className="w-4 h-4" />
-                  Discard
+                  {t("newSheet.action.discard")}
                 </Button>
                 <div className="flex gap-3">
                   <Button variant="outline" className="gap-1.5 font-body" onClick={handleSaveDraft}>
                     <FileText className="w-4 h-4" />
-                    Save Draft
+                    {t("newSheet.action.saveDraft")}
                   </Button>
                   <Button variant="rpg" className="gap-1.5" onClick={handleExportPdf} disabled={isExportingPdf}>
                     <Save className="w-4 h-4" />
-                    Save Sheet
+                    {t("newSheet.action.saveSheet")}
                   </Button>
                 </div>
               </div>

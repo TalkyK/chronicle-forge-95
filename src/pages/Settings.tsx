@@ -1,16 +1,15 @@
 import type { ChangeEventHandler } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Shield, Bell, User, Lock, Globe, ArrowLeft } from "lucide-react";
+import { Shield, Bell, User, Lock, Globe, ArrowLeft, LogOut } from "lucide-react";
 import { useLocale } from "@/i18n/locale";
 import type { Locale, MessageKey } from "@/i18n/messages";
 import { fetchMyProfile, updateMyProfile, uploadMyAvatar, upsertMyProfileLocale } from "@/data/profiles";
 import { useAuth } from "@/auth/AuthProvider";
-import { DEFAULT_REGIONAL_FORMAT, type DateFormatId, type TimeZoneId, useRegionalFormat } from "@/i18n/regionalFormat";
 
 type PanelId = "idioma" | "conta" | "privacidade" | "notificacoes" | "seguranca";
 
-type LanguageId = "pt-BR" | "pt-PT" | "en" | "es" | "fr" | "de" | "ja" | "it";
+type LanguageId = "pt-BR" | "en";
 
 type LanguageOption = {
   id: LanguageId;
@@ -20,27 +19,21 @@ type LanguageOption = {
 
 const languageOptions: LanguageOption[] = [
   { id: "pt-BR", flag: "🇧🇷", label: "Português BR" },
-  { id: "pt-PT", flag: "🇵🇹", label: "Português PT" },
   { id: "en", flag: "🇺🇸", label: "English" },
-  { id: "es", flag: "🇪🇸", label: "Español" },
-  { id: "fr", flag: "🇫🇷", label: "Français" },
-  { id: "de", flag: "🇩🇪", label: "Deutsch" },
-  { id: "ja", flag: "🇯🇵", label: "日本語" },
-  { id: "it", flag: "🇮🇹", label: "Italiano" },
 ];
+
+const toLanguageId = (value: Locale): LanguageId => {
+  return value === "en" ? "en" : "pt-BR";
+};
 
 const Settings = () => {
   const { locale, setLocale, t } = useLocale();
-  const { user } = useAuth();
-  const { settings: regionalSettings, setSettings: setRegionalSettings, reset: resetRegionalSettings } = useRegionalFormat();
+  const { user, signOut } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<PanelId>("idioma");
-  const [selectedLanguage, setSelectedLanguage] = useState<LanguageId>(locale);
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageId>(toLanguageId(locale));
   const [showNotif, setShowNotif] = useState(false);
-
-  const [draftDateFormat, setDraftDateFormat] = useState<DateFormatId>(regionalSettings.dateFormat);
-  const [draftTimeZone, setDraftTimeZone] = useState<TimeZoneId>(regionalSettings.timeZone);
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [displayName, setDisplayName] = useState<string>("");
@@ -93,13 +86,8 @@ const Settings = () => {
   }, [showNotif]);
 
   useEffect(() => {
-    setSelectedLanguage(locale);
+    setSelectedLanguage(toLanguageId(locale));
   }, [locale]);
-
-  useEffect(() => {
-    setDraftDateFormat(regionalSettings.dateFormat);
-    setDraftTimeZone(regionalSettings.timeZone);
-  }, [regionalSettings.dateFormat, regionalSettings.timeZone]);
 
   useEffect(() => {
     let mounted = true;
@@ -191,6 +179,20 @@ const Settings = () => {
     }
   };
 
+  const handleLogout = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      await signOut();
+      navigate("/login");
+    } catch {
+      window.alert("Não foi possível sair da conta agora.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground settings-runes">
       <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] min-h-screen relative z-10">
@@ -200,8 +202,8 @@ const Settings = () => {
             <div className="w-10 h-10 rounded-full border border-accent flex items-center justify-center mb-3">
               <span className="text-base">⚔</span>
             </div>
-            <h1 className="font-heading text-lg font-bold text-accent tracking-wider">FichaQuest</h1>
-            <p className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">Sistema de Fichas</p>
+            <h1 className="font-heading text-lg font-bold text-accent tracking-wider">Roll & Tale</h1>
+            <p className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">Sistema de Aventuras</p>
           </div>
 
           <nav className="py-6 flex-1">
@@ -231,17 +233,17 @@ const Settings = () => {
             </div>
           </nav>
 
-          <div className="px-6 pt-4 border-t border-border/50">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full astral-gradient flex items-center justify-center border border-border/50">
-                <span className="font-heading text-sm font-semibold text-primary-foreground">AR</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-foreground truncate">Arathorn Darkblade</div>
-                <div className="text-xs text-muted-foreground">Mestre de Aventuras · Pro</div>
-              </div>
-            </div>
+          <div className="mt-auto px-6 pt-4 border-t border-border/50">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full inline-flex items-center justify-center gap-2 font-heading text-xs tracking-widest uppercase px-4 py-2.5 rounded-sm border border-border/50 text-muted-foreground hover:text-destructive hover:border-destructive/40 hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Sair da conta
+            </button>
           </div>
+
         </aside>
 
         {/* Main */}
@@ -323,71 +325,6 @@ const Settings = () => {
                 </div>
               </section>
 
-              <section className="bg-secondary border border-border/50 rounded-sm p-7 mb-6 relative settings-card-topline">
-                <div className="font-heading text-sm tracking-widest text-accent mb-1">{t("settings.language.regionalTitle")}</div>
-                <div className="text-muted-foreground italic mb-6">{t("settings.language.regionalDesc")}</div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-heading text-xs uppercase tracking-widest text-muted-foreground mb-2">
-                      Formato de Data
-                    </label>
-                    <select
-                      className="w-full bg-background border border-border/50 text-foreground px-3 py-2.5 rounded-sm outline-none focus:border-accent/60"
-                      value={draftDateFormat}
-                      onChange={(e) => setDraftDateFormat(e.target.value as DateFormatId)}
-                    >
-                      <option value="br">DD/MM/AAAA (Padrão BR)</option>
-                      <option value="us">MM/DD/YYYY (US)</option>
-                      <option value="iso">AAAA-MM-DD (ISO)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-heading text-xs uppercase tracking-widest text-muted-foreground mb-2">
-                      Fuso Horário
-                    </label>
-                    <select
-                      className="w-full bg-background border border-border/50 text-foreground px-3 py-2.5 rounded-sm outline-none focus:border-accent/60"
-                      value={draftTimeZone}
-                      onChange={(e) => setDraftTimeZone(e.target.value as TimeZoneId)}
-                    >
-                      <option value="sp">America/Sao_Paulo (UTC-3)</option>
-                      <option value="manaus">America/Manaus (UTC-4)</option>
-                      <option value="noronha">America/Noronha (UTC-2)</option>
-                      <option value="utc">UTC</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-6 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRegionalSettings({
-                        ...regionalSettings,
-                        dateFormat: draftDateFormat,
-                        timeZone: draftTimeZone,
-                      });
-                      save();
-                    }}
-                    className="font-heading text-xs tracking-widest uppercase px-6 py-2.5 rounded-sm border border-accent/60 bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-                  >
-                    Aplicar Formato
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetRegionalSettings();
-                      setDraftDateFormat(DEFAULT_REGIONAL_FORMAT.dateFormat);
-                      setDraftTimeZone(DEFAULT_REGIONAL_FORMAT.timeZone);
-                      save();
-                    }}
-                    className="font-heading text-xs tracking-widest uppercase px-6 py-2.5 rounded-sm border border-border/50 text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
-                  >
-                    Restaurar Padrão
-                  </button>
-                </div>
-              </section>
             </>
           )}
 

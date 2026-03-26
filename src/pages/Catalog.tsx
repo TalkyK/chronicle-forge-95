@@ -1,9 +1,9 @@
 import {
-  BookOpen,
   Plus,
   Sparkles,
   Pencil,
   Download,
+  Trash2,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useLocale } from "@/i18n/locale";
@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/auth/AuthProvider";
 import { fetchMyProfile } from "@/data/profiles";
 import { listMySheets } from "@/data/sheets";
+import { deleteMySheet } from "@/data/sheets";
 import type { SheetRow } from "@/data/sheets";
 import { useRegionalFormat } from "@/i18n/regionalFormat";
 import { exportRpgSheetPdf, exportStorySheetPdf } from "@/lib/pdf/sheetPdf";
@@ -26,6 +27,7 @@ const Catalog = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [sheets, setSheets] = useState<SheetRow[]>([]);
   const [loadingSheets, setLoadingSheets] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
 
   const filterFromQuery = (): SheetFilter => {
@@ -132,7 +134,7 @@ const Catalog = () => {
       <nav className="flex justify-between items-center w-full px-6 py-4 sticky top-0 z-50 backdrop-blur-md bg-background/80 nebula-shadow">
         <div className="flex items-center gap-8">
           <Link to="/" className="text-2xl font-display italic text-accent">
-            Grimoire
+            Roll & Tale
           </Link>
 
           <div className="hidden md:flex gap-6">
@@ -149,7 +151,7 @@ const Catalog = () => {
               {t("nav.grimoires")}
             </Link>
             <Link
-              to="/catalog#ordem"
+              to="/arcane-order"
               className="text-foreground/60 hover:text-foreground font-mono uppercase tracking-widest text-xs transition-colors"
             >
               {t("nav.arcaneOrder")}
@@ -171,44 +173,8 @@ const Catalog = () => {
         </div>
       </nav>
 
-      {/* Side Navigation Bar (Hidden on Mobile) */}
-      <aside className="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 pt-20 bg-secondary border-r border-border/50 z-40">
-        <div className="px-6 py-8">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-8 h-8 astral-gradient rounded-lg flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <div>
-              <h2 className="font-display text-lg text-primary leading-none">Ordem dos Arcanos</h2>
-              <p className="font-mono text-[10px] uppercase tracking-tighter text-foreground/40">
-                Grande Mestre do Arquivo
-              </p>
-            </div>
-          </div>
-
-          <nav className="space-y-1">
-            <Link
-              to="/catalog#biblioteca"
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 bg-gradient-to-r from-primary/20 to-transparent border-l-4 border-accent text-accent font-bold"
-            >
-              <BookOpen className="w-5 h-5" />
-              <span className="text-sm font-mono uppercase tracking-widest">Biblioteca</span>
-            </Link>
-          </nav>
-        </div>
-
-        <div className="mt-auto px-6 py-8 border-t border-border/30">
-          <button
-            type="button"
-            className="w-full astral-gradient text-primary-foreground py-3 rounded-lg font-mono uppercase tracking-widest text-xs hover:scale-[0.98] transition-transform duration-200 shadow-lg"
-          >
-            Convocar Novo Aliado
-          </button>
-        </div>
-      </aside>
-
       {/* Main Content Canvas */}
-      <main id="ordem" className="md:ml-64 p-6 md:p-12 max-w-7xl mx-auto">
+      <main id="ordem" className="p-6 md:p-12 max-w-7xl mx-auto">
         {/* Hero Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-16">
           <div className="max-w-2xl">
@@ -332,6 +298,35 @@ const Catalog = () => {
                       >
                         <Pencil className="w-4 h-4" />
                       </Link>
+
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center w-9 h-9 rounded-lg border border-border/50 bg-background/20 text-foreground/70 hover:text-destructive hover:bg-background/30 transition-colors disabled:opacity-50"
+                        aria-label="Excluir ficha"
+                        title="Excluir"
+                        disabled={deletingId === sheet.id}
+                        onClick={async () => {
+                          const ok = window.confirm(`Tem certeza que deseja excluir a ficha \"${sheet.title}\"?`);
+                          if (!ok) return;
+
+                          try {
+                            setDeletingId(sheet.id);
+                            await deleteMySheet(sheet.id);
+                            setSheets((prev) => prev.filter((s) => s.id !== sheet.id));
+                            toast({ title: "Ficha excluída", description: "A ficha foi removida da biblioteca." });
+                          } catch {
+                            toast({
+                              variant: "destructive",
+                              title: "Não foi possível excluir",
+                              description: "Tente novamente em alguns instantes.",
+                            });
+                          } finally {
+                            setDeletingId(null);
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
 
                       <button
                         type="button"

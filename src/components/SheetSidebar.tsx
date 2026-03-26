@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, Library, HelpCircle, LogOut, Wand2 } from "lucide-react";
 import {
   Sidebar,
@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/auth/AuthProvider";
+import { toast } from "@/hooks/use-toast";
 
 const mainNav = [
   { title: "Biblioteca", url: "/catalog", icon: Library },
@@ -24,6 +26,8 @@ const SheetSidebar = () => {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const currentType = (() => {
     const sp = new URLSearchParams(location.search);
@@ -36,6 +40,20 @@ const SheetSidebar = () => {
   const buttonVariant = targetType === "RPG" ? "rpg" : "story";
   const buttonTo = `/sheets/new?type=${targetType}`;
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({ title: "Sessão encerrada", description: "Você saiu da conta com sucesso." });
+      navigate("/login");
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Falha ao sair",
+        description: "Não foi possível encerrar a sessão agora.",
+      });
+    }
+  };
+
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
@@ -45,13 +63,13 @@ const SheetSidebar = () => {
           </div>
           {!collapsed && (
             <span className="font-display text-sm tracking-wider text-sidebar-foreground">
-              GRIMOIRE
+              ROLL & TALE
             </span>
           )}
         </Link>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="overflow-x-hidden">
         {/* Cabeçalho (padrão) */}
         {!collapsed && (
           <div className="px-4 py-3">
@@ -88,7 +106,6 @@ const SheetSidebar = () => {
                     }
                   >
                     <Link to={item.url}>
-                      <item.icon />
                       {!collapsed && <span>{item.title}</span>}
                     </Link>
                   </SidebarMenuButton>
@@ -110,20 +127,27 @@ const SheetSidebar = () => {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-3">
+      <SidebarFooter className="p-3 overflow-x-hidden">
         <Separator className="mb-3" />
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <button className="flex items-center gap-2 px-3 py-2 text-sm font-body text-muted-foreground hover:text-sidebar-foreground w-full">
+              <Link
+                to="/settings?panel=conta"
+                className="flex items-center gap-2 px-3 py-2 text-sm font-body text-muted-foreground hover:text-sidebar-foreground w-full"
+              >
                 <HelpCircle className="w-4 h-4" />
                 {!collapsed && <span>Support</span>}
-              </button>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <button className="flex items-center gap-2 px-3 py-2 text-sm font-body text-muted-foreground hover:text-destructive w-full">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-body text-muted-foreground hover:text-destructive w-full"
+              >
                 <LogOut className="w-4 h-4" />
                 {!collapsed && <span>Logout</span>}
               </button>

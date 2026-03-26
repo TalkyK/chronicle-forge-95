@@ -77,3 +77,17 @@ export async function fetchMySheet(id: string): Promise<SheetRow> {
   if (error) throw error;
   return row as SheetRow;
 }
+
+export async function deleteMySheet(id: string): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const user = data.session?.user;
+  if (!user) throw new Error("Sem sessão");
+
+  const { error } = await supabase
+    .from("character_sheets")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) throw error;
+}

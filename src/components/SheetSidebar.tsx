@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, Library, HelpCircle, LogOut, Menu, Wand2 } from "lucide-react";
+import { BookOpen, Library, HelpCircle, LogOut, Wand2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -42,27 +41,6 @@ const SheetSidebar = () => {
   const targetType = currentType === "RPG" ? "STORY" : "RPG";
   const buttonVariant = targetType === "RPG" ? "rpg" : "story";
   const buttonTo = `/sheets/new?type=${targetType}`;
-
-  const isRpgContext = currentType === "RPG";
-
-  const [rpgQuickNavOpen, setRpgQuickNavOpen] = useState(true);
-
-  const handleGoToRpgSection = (section: "character" | "skills" | "inventory" | "history") => {
-    // Esses atalhos fazem sentido só no fluxo de criação RPG (onde o iframe está presente)
-    if (!isRpgContext) return;
-
-    const iframe = document.getElementById("rpg-sheet-iframe") as HTMLIFrameElement | null;
-    if (iframe?.contentWindow) {
-      iframe.contentWindow.postMessage(
-        { type: "rpg-sheet:scroll", section },
-        window.location.origin,
-      );
-      return;
-    }
-
-    // Fallback: abre a ficha HTML standalone
-    navigate("/rpg-sheet");
-  };
 
   const handleLogout = async () => {
     try {
@@ -148,82 +126,6 @@ const SheetSidebar = () => {
               </Link>
             </Button>
 
-            {isRpgContext && (
-              <div className="mt-4 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-2">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 px-1 py-1 text-left"
-                  onClick={() => setRpgQuickNavOpen((v) => !v)}
-                  title="Abrir/fechar menu do RPG"
-                  aria-label="Abrir/fechar menu do RPG"
-                >
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-sidebar-border bg-background/30">
-                    <Menu className="h-4 w-4 text-muted-foreground" />
-                  </span>
-                  <span className="text-[11px] font-body tracking-widest text-muted-foreground">MENU</span>
-                </button>
-
-                {rpgQuickNavOpen && (
-                  <div className="mt-2 flex flex-col gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-3 font-heading tracking-wide text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      onClick={() => handleGoToRpgSection("character")}
-                      title="Personagem"
-                    >
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-sidebar-border bg-background/30 text-xs">
-                        P
-                      </span>
-                      <span className="text-xs">PERSONAGEM</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-3 font-heading tracking-wide text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      onClick={() => handleGoToRpgSection("skills")}
-                      title="Habilidades"
-                    >
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-sidebar-border bg-background/30 text-xs">
-                        HB
-                      </span>
-                      <span className="text-xs">HABILIDADES</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-3 font-heading tracking-wide text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      onClick={() => handleGoToRpgSection("inventory")}
-                      title="Inventário"
-                    >
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-sidebar-border bg-background/30 text-xs">
-                        IV
-                      </span>
-                      <span className="text-xs">INVENTÁRIO</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-3 font-heading tracking-wide text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      onClick={() => handleGoToRpgSection("history")}
-                      title="História"
-                    >
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-sidebar-border bg-background/30 text-xs">
-                        HS
-                      </span>
-                      <span className="text-xs">HISTÓRIA</span>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </SidebarContent>

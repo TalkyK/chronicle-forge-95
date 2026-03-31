@@ -14,6 +14,8 @@ import Login from "./pages/Login";
 import Settings from "./pages/Settings";
 import ArcaneOrder from "./pages/ArcaneOrder";
 import NotFound from "./pages/NotFound";
+import RpgSheetStandalone from "./pages/RpgSheetStandalone";
+import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -26,10 +28,11 @@ const AppLayout = () => {
   const isCatalogDashboard = location.pathname === "/catalog";
   const isAuthFullScreen = location.pathname === "/login";
   const isSettingsFullScreen = location.pathname === "/settings";
+  const isStandaloneFullScreen = location.pathname === "/rpg-sheet";
 
   return (
     <>
-      {!isDashboard && !isCatalogDashboard && !isAuthFullScreen && !isSettingsFullScreen && <Header />}
+      {!isDashboard && !isCatalogDashboard && !isAuthFullScreen && !isSettingsFullScreen && !isStandaloneFullScreen && <Header />}
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
@@ -37,6 +40,8 @@ const AppLayout = () => {
         <Route path="/sheets/new" element={<NewSheet />} />
         <Route path="/catalog" element={<Catalog />} />
         <Route path="/arcane-order" element={<ArcaneOrder />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/rpg-sheet" element={<RpgSheetStandalone />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

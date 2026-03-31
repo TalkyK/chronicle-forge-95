@@ -48,11 +48,11 @@ const Login = () => {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setTab(tabFromQuery());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
@@ -190,20 +190,20 @@ const Login = () => {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (isSubmitting) return;
-                const email = identifier.trim();
+                  const emailOrUsername = identifier.trim();
 
                 if (tab === "login") {
-                  if (!email || !password) {
+                    if (!emailOrUsername || !password) {
                     toast({
                       variant: "destructive",
                       title: "Dados inválidos",
-                      description: "Informe usuário/e-mail e senha.",
+                        description: "Informe usuário ou e-mail e senha.",
                     });
                     return;
                   }
 
                   setIsSubmitting(true);
-                  signInWithPassword({ email, password })
+                    signInWithPassword({ emailOrUsername, password })
                     .then(() => {
                       toast({ title: "Bem-vindo!", description: "Login realizado com sucesso." });
                       navigate(redirectTarget || "/catalog");
@@ -220,39 +220,24 @@ const Login = () => {
                 }
 
                 if (tab === "register") {
-                  if (!email || !password) {
+                    if (!emailOrUsername || !password || !username.trim()) {
                     toast({
                       variant: "destructive",
                       title: "Dados inválidos",
-                      description: "Informe e-mail e senha para criar a conta.",
+                        description: "Informe usuário, e-mail e senha para criar a conta.",
                     });
                     return;
                   }
 
                   setIsSubmitting(true);
-                  signUpWithPassword({ email, password })
-                    .then(() => {
-                      return supabase.auth.getSession();
-                    })
-                    .then(({ data }) => {
-                      const trimmed = displayName.trim();
-                      if (data.session) {
-                        if (trimmed) {
-                          updateMyProfile({ display_name: trimmed }).catch(() => {
-                            // silencioso
-                          });
-                        }
-                        toast({ title: "Conta criada", description: "Bem-vindo!" });
-                        navigate(redirectTarget || "/catalog");
-                        return;
-                      }
-
-                      toast({
-                        title: "Conta criada",
-                        description: "Verifique seu e-mail para confirmar e depois faça login.",
-                      });
-                      setTabAndUrl("login");
-                    })
+                    signUpWithPassword({ email: emailOrUsername, password, username: username.trim() })
+                      .then((result) => {
+                        toast({
+                          title: "Conta criada",
+                          description: result.message || "Verifique seu e-mail para confirmar e depois faça login.",
+                        });
+                        setTabAndUrl("login");
+                      })
                     .catch((err: unknown) => {
                       const message =
                         err && typeof err === "object" && "message" in err
@@ -298,7 +283,7 @@ const Login = () => {
                   .finally(() => setIsSubmitting(false));
               }}
             >
-              {(tab === "register" || tab === "complete") && (
+              {tab === "register" && (
                 <div className="space-y-1.5 group">
                   <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground ml-1">
                     Nome de usuário
@@ -307,6 +292,25 @@ const Login = () => {
                     <input
                       className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3.5 text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-primary/50 focus:ring-0 transition-all font-body"
                       placeholder="Escolha um nome"
+                      type="text"
+                      autoComplete="nickname"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                    />
+                    <User className="absolute right-4 top-3.5 w-5 h-5 text-foreground/20" />
+                  </div>
+                </div>
+              )}
+
+              {tab === "complete" && (
+                <div className="space-y-1.5 group">
+                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground ml-1">
+                    Nome de exibição
+                  </label>
+                  <div className="relative input-glow transition-all duration-300">
+                    <input
+                      className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3.5 text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-primary/50 focus:ring-0 transition-all font-body"
+                      placeholder="Como quer ser chamado"
                       type="text"
                       autoComplete="nickname"
                       value={displayName}
@@ -324,7 +328,9 @@ const Login = () => {
                 <div className="relative input-glow transition-all duration-300">
                   <input
                     className="w-full bg-foreground/5 border border-foreground/10 rounded-xl px-4 py-3.5 text-foreground placeholder:text-foreground/20 focus:outline-none focus:border-primary/50 focus:ring-0 transition-all font-body"
-                    placeholder={t("login.usernamePlaceholder")}
+                    placeholder={
+                      tab === "login" ? "E-mail ou usuário" : t("login.usernamePlaceholder")
+                    }
                     type="text"
                     autoComplete="username"
                     value={identifier}
@@ -394,13 +400,16 @@ const Login = () => {
                     if (isSubmitting) return;
                     setIsSubmitting(true);
                     try {
+                      console.log("OAuth start: google");
                       const { data, error } = await supabase.auth.signInWithOAuth({
                         provider: "google",
                         options: {
-                          redirectTo: `${window.location.origin}/login?tab=complete${redirectTarget ? `&redirect=${encodeURIComponent(redirectTarget)}` : ""}`,
+                          redirectTo: `${window.location.origin}/auth/callback${redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`,
                           skipBrowserRedirect: true,
                         },
                       });
+
+                      console.log("OAuth redirect payload:", data);
 
                       if (error) {
                         toast({
@@ -423,6 +432,7 @@ const Login = () => {
                         return;
                       }
 
+                      console.log("Redirecting to Google OAuth...");
                       window.location.assign(data.url);
                     } catch {
                       toast({ variant: "destructive", title: "Falha", description: "Não foi possível entrar com Google." });

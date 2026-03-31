@@ -16,6 +16,7 @@ import type { SheetRow } from "@/data/sheets";
 import { useRegionalFormat } from "@/i18n/regionalFormat";
 import { exportRpgSheetPdf, exportStorySheetPdf } from "@/lib/pdf/sheetPdf";
 import { toast } from "@/hooks/use-toast";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 type SheetFilter = "RPG" | "STORY";
 
@@ -23,6 +24,7 @@ const Catalog = () => {
   const { t } = useLocale();
   const { user } = useAuth();
   const { formatDate } = useRegionalFormat();
+  const { loading } = useRequireAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [sheets, setSheets] = useState<SheetRow[]>([]);
@@ -41,7 +43,6 @@ const Catalog = () => {
 
   useEffect(() => {
     setActiveFilter(filterFromQuery());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
@@ -127,6 +128,8 @@ const Catalog = () => {
 
       return q.split(/\s+/).every((term) => haystack.includes(term));
     });
+
+  if (loading) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -306,7 +309,7 @@ const Catalog = () => {
                         title="Excluir"
                         disabled={deletingId === sheet.id}
                         onClick={async () => {
-                          const ok = window.confirm(`Tem certeza que deseja excluir a ficha \"${sheet.title}\"?`);
+                          const ok = window.confirm(`Tem certeza que deseja excluir a ficha "${sheet.title}"?`);
                           if (!ok) return;
 
                           try {

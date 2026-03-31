@@ -53,6 +53,8 @@ import { exportRpgSheetPdf, exportStorySheetPdf } from "@/lib/pdf/sheetPdf";
 import { toast } from "@/hooks/use-toast";
 import { fetchMySheet, saveMySheet } from "@/data/sheets";
 import { useAuth } from "@/auth/AuthProvider";
+import RpgSheetStandalone from "@/pages/RpgSheetStandalone";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 /* ─── Types ─── */
 interface Attribute {
@@ -83,6 +85,14 @@ const TEMPLATES: Record<string, { label: string; value: string }[]> = {
     { label: "CON", value: "+1" },
     { label: "INT", value: "+4" },
     { label: "SAB", value: "+2" },
+    { label: "CAR", value: "+0" },
+  ],
+  "Pathfinder 2e": [
+    { label: "FOR", value: "+0" },
+    { label: "DES", value: "+0" },
+    { label: "CON", value: "+0" },
+    { label: "INT", value: "+0" },
+    { label: "SAB", value: "+0" },
     { label: "CAR", value: "+0" },
   ],
   Tormenta20: [
@@ -198,10 +208,13 @@ const MiniTutorialDialog = ({ mode }: { mode: "RPG" | "STORY" }) => {
 
 /* ─── Component ─── */
 const NewSheet = () => {
+  const { loading } = useRequireAuth();
   const { t } = useLocale();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const type = searchParams.get("type") as "RPG" | "STORY" | null;
+
+  if (loading) return null;
 
   /* Choice screen */
   if (!type) {
@@ -233,7 +246,7 @@ const NewSheet = () => {
   }
 
   /* RPG dashboard */
-  if (type === "RPG") return <RpgSheetDashboard />;
+  if (type === "RPG") return <RpgSheetStandalone />;
 
   /* STORY dashboard */
   return <StorySheetDashboard />;
@@ -918,7 +931,6 @@ const RpgSheetDashboard = () => {
 
   useEffect(() => {
     if (editId) return;
-    if (user) return;
     const t = window.setTimeout(() => {
       saveLocalDraft(LOCAL_DRAFT_KEY, {
         name,
@@ -939,7 +951,6 @@ const RpgSheetDashboard = () => {
     return () => window.clearTimeout(t);
   }, [
     editId,
-    user,
     name,
     system,
     notes,
@@ -1247,6 +1258,16 @@ const RpgSheetDashboard = () => {
             </div>
             <div className="flex items-center gap-2">
               <MiniTutorialDialog mode="RPG" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 font-body"
+                onClick={() => navigate("/rpg-sheet")}
+                title="Abrir ficha HTML (standalone)"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Ficha HTML
+              </Button>
               <Button variant="outline" size="sm" className="gap-1.5 font-body" onClick={handleSaveDraft}>
                 <FileText className="w-3.5 h-3.5" />
                 {t("newSheet.action.saveDraft")}
@@ -1683,14 +1704,20 @@ const RpgSheetDashboard = () => {
 
               {/* Bottom actions */}
               <div className="flex items-center justify-between pb-8">
-                <Button
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 font-body"
-                  onClick={handleDiscard}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {t("newSheet.action.discard")}
-                </Button>
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 font-body"
+                    onClick={handleDiscard}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {t("newSheet.action.discard")}
+                  </Button>
+                  <div className="hidden sm:flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-xs font-body">Alterações salvas automaticamente no rascunho</span>
+                  </div>
+                </div>
                 <div className="flex gap-3">
                   <Button variant="outline" className="gap-1.5 font-body" onClick={handleSaveDraft}>
                     <FileText className="w-4 h-4" />

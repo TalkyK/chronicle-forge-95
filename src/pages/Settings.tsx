@@ -6,6 +6,7 @@ import { useLocale } from "@/i18n/locale";
 import type { Locale, MessageKey } from "@/i18n/messages";
 import { fetchMyProfile, updateMyProfile, uploadMyAvatar, upsertMyProfileLocale } from "@/data/profiles";
 import { useAuth } from "@/auth/AuthProvider";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 type PanelId = "idioma" | "conta" | "privacidade" | "notificacoes" | "seguranca";
 
@@ -27,6 +28,7 @@ const toLanguageId = (value: Locale): LanguageId => {
 };
 
 const Settings = () => {
+  const { loading } = useRequireAuth();
   const { locale, setLocale, t } = useLocale();
   const { user, signOut } = useAuth();
   const [searchParams] = useSearchParams();
@@ -192,6 +194,8 @@ const Settings = () => {
       window.alert("Não foi possível sair da conta agora.");
     }
   };
+
+  if (loading) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground settings-runes">
